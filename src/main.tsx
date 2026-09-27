@@ -5,6 +5,9 @@ import '@fontsource/heebo/500.css';
 import '@fontsource/heebo/700.css';
 import '@fontsource/heebo/800.css';
 import '@fontsource/heebo/900.css';
+import '@fontsource/frank-ruhl-libre/500.css';
+import '@fontsource/frank-ruhl-libre/700.css';
+import '@fontsource/frank-ruhl-libre/900.css';
 import './styles/global.css';
 import App from './App';
 

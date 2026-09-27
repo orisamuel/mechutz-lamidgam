@@ -15,7 +15,8 @@ const BIG_STEP = 20;
 
 /**
  * Bipolar slider. Always physically left→right (value 0 on the left), even inside the RTL
- * page, so "ימין־מזגן" really is on the right. No thumb until the user picks a position.
+ * page, so "ימין־מזגן" really is on the right. The dot waits in the middle from the start;
+ * it only counts as an answer once it is touched, dragged or moved with the keyboard.
  */
 export function AxisQuestion({ axis, value, onChange }: Props) {
   const def = AXES[axis];

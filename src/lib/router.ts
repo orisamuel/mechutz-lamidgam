@@ -6,9 +6,7 @@ export type Route =
   | { name: 'question'; index: number }
   | { name: 'needMore' }
   | { name: 'result' }
-  | { name: 'map' }
-  | { name: 'methodology' }
-  | { name: 'accessibility' };
+  | { name: 'methodology' };
 
 export function parseHash(hash: string): Route {
   const path = hash.replace(/^#/, '').replace(/\/+$/, '');
@@ -23,12 +21,8 @@ export function parseHash(hash: string): Route {
       return { name: 'needMore' };
     case '/result':
       return { name: 'result' };
-    case '/map':
-      return { name: 'map' };
     case '/methodology':
       return { name: 'methodology' };
-    case '/accessibility':
-      return { name: 'accessibility' };
     default:
       return { name: 'intro' };
   }
@@ -44,12 +38,8 @@ export function routeToHash(route: Route): string {
       return '#/need-more';
     case 'result':
       return '#/result';
-    case 'map':
-      return '#/map';
     case 'methodology':
       return '#/methodology';
-    case 'accessibility':
-      return '#/accessibility';
   }
 }
 

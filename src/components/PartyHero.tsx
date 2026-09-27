@@ -6,10 +6,11 @@ import { BallotSlip } from './BallotSlip';
 /** Portrait with the ballot slip on its corner, or — until a portrait exists — the slip on a compass grid. */
 export function PartyHero({ party }: { party: Party }) {
   if (party.portrait) {
+    const alt = party.portraitAnonymous ? 'איור של דמות אנונימית' : `איור דיוקן של ${party.leader}`;
     return (
       <div className="hero hero--portrait">
         <figure className="hero__figure">
-          <img src={asset(party.portrait)} alt={`איור דיוקן של ${party.leader}`} width={640} height={800} />
+          <img src={asset(party.portrait)} alt={alt} width={640} height={800} />
           <span className="hero__tag">{COPY.result.illustration}</span>
         </figure>
         <BallotSlip letters={party.letters} name={party.officialName} size="small" />

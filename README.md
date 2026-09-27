@@ -26,10 +26,10 @@ npm run spec:tables  # מדפיס את טבלאות GAME_SPEC.md מתוך src/da
 src/
   data/        questions.ts (12 השאלות + מטריצה) · parties.ts · axes.ts · copy.ts · archetypes.ts
   lib/         score.ts · identity.ts · microcopy.ts · cardRenderer.ts · share.ts · storage.ts · router.ts
-  components/  QuestionCard · AxisQuestion · BallotSlip · PartyHero · PoliticalMap · Progress · …
-  pages/       Intro · Quiz · Loading · NeedMore · Result · MapPage · TextPage
-scripts/       simulate.ts · spec-tables.ts
-public/        favicon.svg · party-leaders/ (דיוקנאות, כשיהיו)
+  components/  QuestionCard · AxisQuestion · BallotSlip · PartyHero · Progress · Masthead · …
+  pages/       Intro · Quiz · Loading · NeedMore · Result · TextPage
+scripts/       simulate.ts · spec-tables.ts · portraits.py (דיוקנאות דרך fal)
+public/        favicon.svg · party-leaders/ (6 דיוקנאות מאוירים)
 ```
 
 - **הניקוד** עובר רק דרך ארכיטיפים פנימיים. אף מקום בקוד לא טוען שלרשימה אמיתית יש עמדה על פיצה או מזגן.
@@ -54,7 +54,6 @@ public/        favicon.svg · party-leaders/ (דיוקנאות, כשיהיו)
 ## לפני השקה
 
 - [ ] לאמת אותיות, שמות וראשי רשימות מול ועדת הבחירות (ב-`parties.ts` יש TODO).
-- [ ] להוסיף פרטי קשר של אחראי הנגישות (`COPY.accessibility.contact`).
 - [ ] לבדוק על אייפון אמיתי: שיתוף, יצירת תמונה, סליידר, swipe-back.
 - [ ] לבחור ספק analytics (`src/lib/analytics.ts`), cookieless, בלי לשלוח תשובות.
 - [ ] להסיר את `VITE_NOINDEX`.

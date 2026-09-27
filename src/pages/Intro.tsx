@@ -1,5 +1,8 @@
-import { COPY } from '../data/copy';
+import type { CSSProperties } from 'react';
+import { BallotSlip } from '../components/BallotSlip';
 import { Footer } from '../components/Footer';
+import { COPY } from '../data/copy';
+import { PARTIES } from '../data/parties';
 
 interface Props {
   resumeAt: number | null;
@@ -8,27 +11,49 @@ interface Props {
   onResume: () => void;
   onRestart: () => void;
   onResult: () => void;
-  onAccessibility: () => void;
+  onMethodology: () => void;
 }
 
-export function Intro({ resumeAt, hasResult, onStart, onResume, onRestart, onResult, onAccessibility }: Props) {
+export function Intro({ resumeAt, hasResult, onStart, onResume, onRestart, onResult, onMethodology }: Props) {
   return (
     <div className="page page--intro">
-      <main id="main" className="intro">
-        <div className="intro__mark" aria-hidden="true">
-          <span className="intro__dot" />
-        </div>
-        <h1 id="page-title" className="intro__title" tabIndex={-1}>
+      <header className="nameplate">
+        <p className="nameplate__edition">{COPY.intro.edition}</p>
+        <h1 id="page-title" className="nameplate__name" tabIndex={-1}>
           {COPY.productName}
         </h1>
-        <h2 className="intro__subtitle">{COPY.tagline}</h2>
-        <p className="intro__body">{COPY.intro.body}</p>
-        <p className="intro__meta">{COPY.intro.meta}</p>
+        <p className="nameplate__meta">{COPY.mastheadMeta}</p>
+      </header>
 
-        <div className="intro__actions">
+      <main id="main" className="intro">
+        <div className="slipfan" aria-hidden="true">
+          {PARTIES.map((p, i) => (
+            <div key={p.id} className="slipfan__item" style={fanStyle(i)}>
+              <BallotSlip letters={p.letters} name={p.officialName} size="fan" />
+            </div>
+          ))}
+        </div>
+
+        <article className="intro__article">
+          <p className="intro__lead">{COPY.intro.lead}</p>
+          <p>{COPY.intro.body}</p>
+          <p className="intro__quote">
+            <span>{COPY.intro.pullQuote}</span>
+          </p>
+          <p>{COPY.intro.closing}</p>
+          <p className="intro__question">{COPY.intro.question}</p>
+          <p className="intro__candidates">
+            {COPY.intro.candidates} <span className="intro__aside">{COPY.intro.aside}</span>
+          </p>
+        </article>
+        <p className="intro__hint">{COPY.intro.skipHint}</p>
+      </main>
+
+      <div className="intro__cta">
+        <div className="intro__cta-inner">
           {hasResult ? (
             <>
-              <button type="button" className="btn btn--primary btn--block" onClick={onResult}>
+              <button type="button" className="btn btn--primary btn--block btn--lg" onClick={onResult}>
                 {COPY.intro.toResult}
               </button>
               <button type="button" className="link-button" onClick={onRestart}>
@@ -37,7 +62,7 @@ export function Intro({ resumeAt, hasResult, onStart, onResume, onRestart, onRes
             </>
           ) : resumeAt !== null ? (
             <>
-              <button type="button" className="btn btn--primary btn--block" onClick={onResume}>
+              <button type="button" className="btn btn--primary btn--block btn--lg" onClick={onResume}>
                 {COPY.intro.resume(resumeAt + 1)}
               </button>
               <button type="button" className="link-button" onClick={onRestart}>
@@ -45,14 +70,20 @@ export function Intro({ resumeAt, hasResult, onStart, onResume, onRestart, onRes
               </button>
             </>
           ) : (
-            <button type="button" className="btn btn--primary btn--block" onClick={onStart}>
+            <button type="button" className="btn btn--primary btn--block btn--lg" onClick={onStart}>
               {COPY.intro.start}
+              <span className="btn__meta">{COPY.intro.meta}</span>
             </button>
           )}
         </div>
-        <p className="intro__hint">{COPY.intro.skipHint}</p>
-      </main>
-      <Footer onAccessibility={onAccessibility} />
+      </div>
+      <Footer onMethodology={onMethodology} />
     </div>
   );
+}
+
+/** First list on the right (RTL), the middle of the fan on top. */
+function fanStyle(index: number): CSSProperties {
+  const offset = (PARTIES.length - 1) / 2 - index;
+  return { '--i': offset, zIndex: 10 - Math.round(Math.abs(offset) * 2) } as CSSProperties;
 }

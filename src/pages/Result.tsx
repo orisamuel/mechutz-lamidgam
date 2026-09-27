@@ -9,18 +9,23 @@ import { asset } from '../lib/assets';
 import { loadImage, renderCardBlob, type CardData, type CardFormat } from '../lib/cardRenderer';
 import { shareImage } from '../lib/share';
 
+export interface RunnerUp {
+  party: Party;
+  percent: number;
+}
+
 interface Props {
   party: Party;
   percent: number;
   body: string;
   micro: string;
+  identityParts: string[];
   identity: string;
   shareText: string;
   displayUrl: string;
-  onMap: () => void;
+  runnersUp: RunnerUp[];
   onRetake: () => void;
   onMethodology: () => void;
-  onAccessibility: () => void;
   onHome: () => void;
   onToast: (message: string) => void;
 }
@@ -28,8 +33,9 @@ interface Props {
 type Blobs = Partial<Record<CardFormat, Blob>>;
 
 export function Result(props: Props) {
-  const { party, percent, body, micro, identity, shareText, displayUrl, onToast } = props;
+  const { party, percent, body, micro, identityParts, identity, shareText, displayUrl, runnersUp, onToast } = props;
   const [blobs, setBlobs] = useState<Blobs>({});
+  const runnersKey = runnersUp.map((r) => `${r.party.id}:${r.percent}`).join('|');
 
   // Pre-render both cards so share() runs inside the click gesture (iOS Safari requirement).
   useEffect(() => {
@@ -44,7 +50,8 @@ export function Result(props: Props) {
         identity,
         url: displayUrl,
         portrait,
-        disclosure: portrait ? COPY.result.aiDisclosure : null,
+        disclosure: portrait ? (party.portraitAnonymous ? COPY.result.anonymousDisclosure : COPY.result.aiDisclosure) : null,
+        runnersUp: runnersUp.map((r) => ({ name: r.party.name, letters: r.party.letters, percent: r.percent })),
       };
       const [post, story] = await Promise.all([renderCardBlob(data, 'post'), renderCardBlob(data, 'story')]);
       if (!cancelled) setBlobs({ post: post ?? undefined, story: story ?? undefined });
@@ -52,7 +59,8 @@ export function Result(props: Props) {
     return () => {
       cancelled = true;
     };
-  }, [party, percent, identity, displayUrl]);
+    // runnersKey stands in for runnersUp, which is a fresh array on every render.
+  }, [party, percent, identity, displayUrl, runnersKey]);
 
   const share = useCallback(
     async (format: CardFormat) => {
@@ -72,37 +80,104 @@ export function Result(props: Props) {
     <div className="page">
       <Masthead onHome={props.onHome} />
       <main id="main" className="shell shell--result">
-        <article className="card result">
-          <p className="result__eyebrow">{COPY.result.eyebrow}</p>
+        <article className="result">
+          <p className="result__eyebrow">
+            <span>{COPY.result.eyebrow}</span>
+          </p>
           <PartyHero party={party} />
-          {party.portrait && <p className="result__disclosure">{COPY.result.aiDisclosure}</p>}
+          {party.portrait && (
+            <p className="result__disclosure">
+              {party.portraitAnonymous ? COPY.result.anonymousDisclosure : COPY.result.aiDisclosure}
+            </p>
+          )}
           <h1 id="page-title" className="result__party" tabIndex={-1}>
             {party.name}
           </h1>
           <p className="result__leader">
             {party.leaderRole}: {party.leader}
           </p>
-          <p className="result__percent">
-            <span className="result__percent-num">{percent}%</span> {COPY.result.percentWord}
-          </p>
+
+          <div className="result__score">
+            <p className="result__percent">
+              <span className="result__percent-num">{percent}%</span>
+              <span className="result__percent-word">{COPY.result.percentWord}</span>
+            </p>
+            <div className="bar bar--lg" aria-hidden="true">
+              <span style={{ width: `${percent}%` }} />
+            </div>
+          </div>
+
           <h2 className="result__title">{party.title}</h2>
           <p className="result__body">{body}</p>
+
+          {identityParts.length > 0 && (
+            <div className="result__identity">
+              <p className="result__identity-label">{COPY.result.identityLabel}</p>
+              <ul className="chips">
+                {identityParts.map((part) => (
+                  <li key={part}>{part}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           <p className="result__micro">{micro}</p>
 
           <div className="result__actions">
-            <button type="button" className="btn btn--primary btn--block" onClick={() => void share('post')}>
+            <button type="button" className="btn btn--primary btn--block btn--lg" onClick={() => void share('post')}>
               {COPY.result.share}
             </button>
-            <button type="button" className="btn btn--secondary btn--block" onClick={props.onMap}>
-              {COPY.result.map}
-            </button>
+            {party.website && (
+              <a className="btn btn--secondary btn--block" href={party.website.url} target="_blank" rel="noopener noreferrer">
+                {party.website.kind === 'platform' ? COPY.result.platformLink : COPY.result.profileLink}
+              </a>
+            )}
             <button type="button" className="link-button" onClick={() => void share('story')}>
               {COPY.result.shareStory}
             </button>
           </div>
         </article>
+
+        {runnersUp.length > 0 && (
+          <section className="runners" aria-labelledby="runners-title">
+            <h2 id="runners-title" className="runners__title">
+              {COPY.result.runnersUp}
+            </h2>
+            <ol className="runners__list">
+              {runnersUp.map(({ party: p, percent: pct }, i) => (
+                <li key={p.id} className="runner">
+                  <span className="runner__rank" aria-hidden="true">
+                    {i + 2}
+                  </span>
+                  {p.portrait ? (
+                    <img className="runner__face" src={asset(p.portrait)} alt="" width={56} height={70} />
+                  ) : (
+                    <span className="runner__face" />
+                  )}
+                  <div className="runner__body">
+                    <div className="runner__row">
+                      <span className="runner__name">
+                        {p.name}
+                        {p.letters && <span className="runner__letters">{p.letters}</span>}
+                      </span>
+                      <span className="runner__pct">{pct}%</span>
+                    </div>
+                    <div className="bar" aria-hidden="true">
+                      <span style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
+
+        <div className="result__again">
+          <button type="button" className="link-button" onClick={props.onRetake}>
+            {COPY.result.retake}
+          </button>
+        </div>
       </main>
-      <Footer onMethodology={props.onMethodology} onAccessibility={props.onAccessibility} />
+      <Footer onMethodology={props.onMethodology} />
     </div>
   );
 }

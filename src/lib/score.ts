@@ -88,6 +88,33 @@ export function questionMax(question: Question): ScoreMap {
   return max;
 }
 
+/** Floor of the runner-up scale: runners-up map proportionally onto [RUNNER_UP_MIN, winner). */
+export const RUNNER_UP_MIN = 38;
+
+export interface RankedMatch {
+  archetype: ArchetypeId;
+  percent: number;
+}
+
+/**
+ * The winner with its calibrated percent, then the next ones scaled by raw score relative to the
+ * winner onto [RUNNER_UP_MIN, winner). Always strictly decreasing, so the list never shows a tie.
+ */
+export function topMatches(result: ScoreResult, count = 3): RankedMatch[] {
+  const [first, ...rest] = result.ranking;
+  const matches: RankedMatch[] = [{ archetype: first!.archetype, percent: result.percent }];
+  const top = result.scores[first!.archetype];
+  let previous = result.percent;
+  for (const entry of rest.slice(0, count - 1)) {
+    const ratio = top > 0 ? Math.max(0, entry.score / top) : 0;
+    const scaled = Math.round(RUNNER_UP_MIN + (result.percent - RUNNER_UP_MIN) * ratio);
+    const percent = Math.max(RUNNER_UP_MIN - 2, Math.min(previous - 1, scaled));
+    matches.push({ archetype: entry.archetype, percent });
+    previous = percent;
+  }
+  return matches;
+}
+
 export function percentFromAffinity(affinity: number): number {
   const raw = Math.round(PCT_BASE + PCT_RANGE * affinity);
   return Math.min(PCT_MAX, Math.max(PCT_MIN, raw));

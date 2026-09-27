@@ -5,15 +5,14 @@ import { PARTIES, partyForArchetype } from './data/parties';
 import { QUESTIONS, QUESTION_COUNT } from './data/questions';
 import type { Answer, Answers } from './data/types';
 import { track } from './lib/analytics';
-import { axisReadings, identityParts, identitySentence, mapSummary, shareText } from './lib/identity';
+import { identityParts, identitySentence, shareText } from './lib/identity';
 import { matchLine, pickBody } from './lib/microcopy';
 import { parseHash, routeToHash, sameRoute, type Route } from './lib/router';
-import { computeResult, countAnswered, MIN_ANSWERS } from './lib/score';
+import { computeResult, countAnswered, MIN_ANSWERS, topMatches } from './lib/score';
 import { displayUrl, siteUrl } from './lib/share';
 import { clearAnswers, loadAnswers, saveAnswers } from './lib/storage';
 import { Intro } from './pages/Intro';
 import { Loading } from './pages/Loading';
-import { MapPage } from './pages/MapPage';
 import { NeedMore } from './pages/NeedMore';
 import { Quiz } from './pages/Quiz';
 import { Result } from './pages/Result';
@@ -68,7 +67,7 @@ export default function App() {
       const reachable = allVisited ? QUESTION_COUNT - 1 : firstUnvisited;
       return route.index > reachable ? { name: 'question', index: reachable } : route;
     }
-    if (route.name === 'result' || route.name === 'map') {
+    if (route.name === 'result') {
       if (result) return route;
       return allVisited ? { name: 'needMore' } : { name: 'question', index: firstUnvisited };
     }
@@ -130,10 +129,8 @@ export default function App() {
 
   const goHome = () => navigate({ name: 'intro' });
   const goMethodology = () => navigate({ name: 'methodology' });
-  const goAccessibility = () => navigate({ name: 'accessibility' });
   const clearToast = useCallback(() => setToast(null), []);
 
-  const party = result ? partyForArchetype(result.winner) : null;
   const parts = useMemo(() => identityParts(QUESTIONS, answers), [answers]);
   const url = siteUrl();
 
@@ -154,7 +151,7 @@ export default function App() {
             onResume={() => navigate({ name: 'question', index: Math.max(0, firstUnvisited) })}
             onRestart={restart}
             onResult={() => navigate({ name: 'result' })}
-            onAccessibility={goAccessibility}
+            onMethodology={goMethodology}
           />
         );
         break;
@@ -195,42 +192,30 @@ export default function App() {
           />
         );
         break;
-      case 'result':
-        screen =
-          result && party ? (
-            <Result
-              party={party}
-              percent={result.percent}
-              body={pickBody(party, answers)}
-              micro={matchLine(result, QUESTIONS, answers, party)}
-              identity={identitySentence(parts)}
-              shareText={shareText(party.name, result.percent, parts, url)}
-              displayUrl={displayUrl(url)}
-              onMap={() => {
-                track('map_view');
-                navigate({ name: 'map' });
-              }}
-              onRetake={restart}
-              onMethodology={goMethodology}
-              onAccessibility={goAccessibility}
-              onHome={goHome}
-              onToast={setToast}
-            />
-          ) : (
-            <Loading durationMs={0} />
-          );
-        break;
-      case 'map': {
-        const readings = axisReadings(QUESTIONS, answers);
+      case 'result': {
+        if (!result) {
+          screen = <Loading durationMs={0} />;
+          break;
+        }
+        const party = partyForArchetype(result.winner);
+        const runnersUp = topMatches(result)
+          .slice(1)
+          .map((m) => ({ party: partyForArchetype(m.archetype), percent: m.percent }));
         screen = (
-          <MapPage
-            readings={readings}
-            summary={mapSummary(readings)}
-            onBack={() => back({ name: 'result' })}
+          <Result
+            party={party}
+            percent={result.percent}
+            body={pickBody(party, answers)}
+            micro={matchLine(result, QUESTIONS, answers, party)}
+            identityParts={parts}
+            identity={identitySentence(parts)}
+            shareText={shareText(party.name, result.percent, parts, url)}
+            displayUrl={displayUrl(url)}
+            runnersUp={runnersUp}
             onRetake={restart}
             onMethodology={goMethodology}
-            onAccessibility={goAccessibility}
             onHome={goHome}
+            onToast={setToast}
           />
         );
         break;
@@ -243,17 +228,6 @@ export default function App() {
             ))}
             {PARTIES.some((p) => p.portrait) && <p>{COPY.methodology.portraits}</p>}
             <p>{COPY.methodology.privacy}</p>
-          </TextPage>
-        );
-        break;
-      case 'accessibility':
-        screen = (
-          <TextPage title={COPY.accessibility.title} onBack={() => back({ name: 'intro' })} onHome={goHome}>
-            {COPY.accessibility.paragraphs.map((p) => (
-              <p key={p}>{p}</p>
-            ))}
-            <p>{COPY.accessibility.contact ?? COPY.accessibility.contactPending}</p>
-            <p className="prose__muted">{COPY.accessibility.updated}</p>
           </TextPage>
         );
         break;

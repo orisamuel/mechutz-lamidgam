@@ -20,6 +20,10 @@ export interface Party {
   letters: string | null;
   /** Path under public/, e.g. 'party-leaders/pirates.webp'. null → typographic ballot slip only. */
   portrait: string | null;
+  /** True when no reliable photo exists and the portrait is a deliberately anonymous figure. */
+  portraitAnonymous?: boolean;
+  /** Official platform page or homepage, when one exists. */
+  website: { url: string; kind: 'platform' | 'profile' } | null;
   title: string;
   /** Picked deterministically per answer set. Describe the user, never the list's platform. */
   bodies: string[];
@@ -38,7 +42,8 @@ export const PARTIES: Party[] = [
     leader: 'אוהד יעקב שם טוב',
     leaderRole: 'ראש הרשימה',
     letters: 'צף',
-    portrait: null,
+    portrait: 'party-leaders/pirates.webp',
+    website: { url: 'https://piratim.org/wiki/matza/', kind: 'platform' },
     title: 'אין צורך להמשיך לחפש.',
     bodies: [
       'אתם מאמינים בחופש הפרט, בכפתורים ברורים ובזכות הבסיסית לא להאזין להודעה קולית של 4:38.',
@@ -57,7 +62,8 @@ export const PARTIES: Party[] = [
     leader: 'עו"ד אביטל חי אופק',
     leaderRole: 'ראש הרשימה', // brief said ראשת; every source uses masculine forms for him
     letters: 'קך',
-    portrait: null,
+    portrait: 'party-leaders/seder-chadash.webp',
+    website: { url: 'https://www.bakalpi.co.il/he/parties/seder-chadash', kind: 'profile' },
     title: 'סוף סוף מישהו עושה פה סדר.',
     bodies: [
       'קשה לכם עם עמימות, "בערך", אנשים שלא מאשרים הגעה והעובדה שעדיין אין הגדרה מוסכמת ל"עוד מעט".',
@@ -79,7 +85,8 @@ export const PARTIES: Party[] = [
     leader: 'ד"ר אלון גלעדי',
     leaderRole: 'ראש הרשימה',
     letters: 'פה',
-    portrait: null,
+    portrait: 'party-leaders/ani-veata.webp',
+    website: { url: 'https://www.bakalpi.co.il/he/parties/ani-veata', kind: 'profile' },
     title: 'אפשר עדיין לפתור את זה בינינו.',
     bodies: [
       'לפני תקן, אפליקציה או ועדה, אתם מעדיפים שמישהו פשוט ישאל את האנשים בחדר מה נוח להם.',
@@ -98,7 +105,8 @@ export const PARTIES: Party[] = [
     leader: 'ישוע ישראל בן דוד',
     leaderRole: 'ראש הרשימה',
     letters: 'ה',
-    portrait: null,
+    portrait: 'party-leaders/gan-eden.webp',
+    website: { url: 'https://www.ganeden.org.il/platform', kind: 'platform' },
     title: 'באופן מפתיע, יש לך בית פוליטי.',
     bodies: [
       'אתם בעד פחות הודעות, פחות ישיבות, יותר צל, ושבין 14:00 ל־16:00 פשוט לא יקרה שום דבר.',
@@ -114,7 +122,8 @@ export const PARTIES: Party[] = [
     leader: 'איתן שוילי',
     leaderRole: 'ראש הרשימה',
     letters: 'צדק',
-    portrait: null,
+    portrait: 'party-leaders/sharsher.webp',
+    website: { url: 'https://www.bakalpi.co.il/he/parties/sharsher', kind: 'profile' },
     title: 'יש דברים שראויים למעמד.',
     bodies: [
       'אתם לא מחפשים רק פתרון. אתם מחפשים כניסה, נוכחות ורגע שבו כולם מבינים שהאירוע התחיל.',
@@ -133,7 +142,12 @@ export const PARTIES: Party[] = [
     leader: 'משה סלמוביץ',
     leaderRole: 'ראש הרשימה',
     letters: 'נקי',
-    portrait: null,
+    portrait: 'party-leaders/hatikun.webp',
+    portraitAnonymous: true, // no reliable photo exists
+    website: {
+      url: 'https://hatikun.org.il/%d7%9e%d7%98%d7%a8%d7%95%d7%aa-%d7%94%d7%aa%d7%99%d7%a7%d7%95%d7%9f/',
+      kind: 'platform',
+    },
     title: 'קודם נחליט איך מחליטים.',
     bodies: [
       'אין לכם בעיה עם התוצאה. יש לכם כמה שאלות לגבי ההליך, מי היה מוסמך לקבוע אותו ומתי נסגרה ההרשמה.',

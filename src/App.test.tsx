@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import App from './App';
@@ -8,7 +8,7 @@ import { QUESTIONS } from './data/questions';
 const progress = (n: number) => `שאלה ${n} מתוך ${QUESTIONS.length}`;
 
 async function start(user: UserEvent) {
-  await user.click(screen.getByRole('button', { name: 'מתחילים' }));
+  await user.click(screen.getByRole('button', { name: /^מתחילים/ }));
   expect(screen.getByText(progress(1))).toBeInTheDocument();
 }
 
@@ -85,7 +85,7 @@ describe('quiz flow', () => {
     expect(screen.getByText(/סוגיות נמצאה התאמה/)).toBeInTheDocument();
   });
 
-  it('a full run shows the result and the map; retake starts over', async () => {
+  it('a full run shows the winner plus two runners-up; retake starts over', async () => {
     const user = userEvent.setup();
     render(<App />);
     await start(user);
@@ -93,12 +93,17 @@ describe('quiz flow', () => {
 
     const heading = await screen.findByRole('heading', { level: 1 });
     expect(PARTIES.map((p) => p.name)).toContain(heading.textContent);
-    expect(screen.getByText(/^\d{2}%$/)).toBeInTheDocument();
+    expect(screen.getByText('זו המפלגה שהכי מתאימה לך')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'שתפו את התוצאה' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /למצע המפלגה|לעמוד המפלגה/ })).toHaveAttribute('target', '_blank');
 
-    await user.click(screen.getByRole('button', { name: 'תראו לי את המפה שלי' }));
-    expect(await screen.findByRole('heading', { name: 'המפה שלי' })).toBeInTheDocument();
-    expect(screen.getAllByRole('listitem')).toHaveLength(4);
+    const runners = within(screen.getByRole('region', { name: 'ההתאמות הבאות' })).getAllByRole('listitem');
+    expect(runners).toHaveLength(2);
+    const percents = [screen.getAllByText(/^\d{2}%$/)[0]!, ...runners.map((r) => within(r).getByText(/^\d{1,2}%$/))].map(
+      (el) => Number(el.textContent!.replace('%', '')),
+    );
+    expect(percents[0]).toBeGreaterThan(percents[1]!);
+    expect(percents[1]).toBeGreaterThan(percents[2]!);
 
     await user.click(screen.getByRole('button', { name: 'עשו שוב' }));
     expect(screen.getByText(progress(1))).toBeInTheDocument();

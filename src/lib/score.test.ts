@@ -10,7 +10,9 @@ import {
   PCT_MIN,
   percentFromAffinity,
   questionPoints,
+  RUNNER_UP_MIN,
   TIE_EPSILON,
+  topMatches,
 } from './score';
 
 const byId = (id: string) => QUESTIONS.find((q) => q.id === id)!;
@@ -108,6 +110,23 @@ describe('computeResult', () => {
     const b = computeResult(QUESTIONS, structuredClone(answers))!;
     expect(b.winner).toBe(a.winner);
     expect(b.percent).toBe(a.percent);
+  });
+});
+
+describe('topMatches', () => {
+  it('returns the winner first with its percent, then two strictly lower runners-up', () => {
+    const rand = mulberry32(21);
+    for (let i = 0; i < 1000; i++) {
+      const r = computeResult(QUESTIONS, randomAnswers(QUESTIONS, rand));
+      if (!r) continue;
+      const top = topMatches(r);
+      expect(top).toHaveLength(3);
+      expect(top[0]).toEqual({ archetype: r.winner, percent: r.percent });
+      expect(new Set(top.map((m) => m.archetype)).size).toBe(3);
+      expect(top[1]!.percent).toBeLessThan(top[0]!.percent);
+      expect(top[2]!.percent).toBeLessThan(top[1]!.percent);
+      expect(top[2]!.percent).toBeGreaterThanOrEqual(RUNNER_UP_MIN - 2);
+    }
   });
 });
 

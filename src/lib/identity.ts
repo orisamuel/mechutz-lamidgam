@@ -1,4 +1,4 @@
-import { AXES, AXIS_ORDER, bandIndex, type BandIndex } from '../data/axes';
+import { AXES, bandIndex, type BandIndex } from '../data/axes';
 import type { Answers, AxisId, Question } from '../data/types';
 import { answersHash } from './hash';
 
@@ -93,11 +93,4 @@ export function shareText(partyName: string, percent: number, parts: string[], u
   const stance = parts.slice(0, 2).join(', ');
   const line = stance ? `יצא לי ${partyName}, ${percent}%. ${stance}.` : `יצא לי ${partyName}, ${percent}%.`;
   return url ? `${line}\n${url}` : line;
-}
-
-/** "מרכז־פיצה · נוטה ליומן · ימין־מזגן" in map order. */
-export function mapSummary(readings: AxisReading[]): string {
-  return AXIS_ORDER.map((axis) => readings.find((r) => r.axis === axis)?.descriptor)
-    .filter((d): d is string => Boolean(d))
-    .join(' · ');
 }

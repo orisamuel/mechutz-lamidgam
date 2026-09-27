@@ -3,7 +3,7 @@ import { bandIndex } from '../data/axes';
 import { PARTIES, partyForArchetype, type Party } from '../data/parties';
 import { QUESTIONS } from '../data/questions';
 import type { Answers } from '../data/types';
-import { axisReadings, identityParts, identitySentence, mapSummary, shareText } from './identity';
+import { axisReadings, identityParts, identitySentence, shareText } from './identity';
 import { agreementCount, matchLine } from './microcopy';
 import { computeResult } from './score';
 import { mulberry32, personaAnswers, randomAnswers } from './simulate';
@@ -67,9 +67,6 @@ describe('identity sentence', () => {
     expect(parts[2]).toBe('קו מתון בסוגיית המעלית');
   });
 
-  it('leaves skipped axes out of the map summary', () => {
-    expect(mapSummary(axisReadings(QUESTIONS, answers))).toBe('מרכז־פיצה · נוטה ליומן · ימין־מזגן');
-  });
 });
 
 describe('micro-copy', () => {
