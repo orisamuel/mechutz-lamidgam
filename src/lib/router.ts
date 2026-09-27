@@ -1,0 +1,58 @@
+import { QUESTION_COUNT } from '../data/questions';
+
+/** Hash routes, so every step is a real history entry: swipe-back and Android back behave. */
+export type Route =
+  | { name: 'intro' }
+  | { name: 'question'; index: number }
+  | { name: 'needMore' }
+  | { name: 'result' }
+  | { name: 'map' }
+  | { name: 'methodology' }
+  | { name: 'accessibility' };
+
+export function parseHash(hash: string): Route {
+  const path = hash.replace(/^#/, '').replace(/\/+$/, '');
+  const question = /^\/q\/(\d+)$/.exec(path);
+  if (question) {
+    const n = Number(question[1]);
+    if (n >= 1 && n <= QUESTION_COUNT) return { name: 'question', index: n - 1 };
+    return { name: 'intro' };
+  }
+  switch (path) {
+    case '/need-more':
+      return { name: 'needMore' };
+    case '/result':
+      return { name: 'result' };
+    case '/map':
+      return { name: 'map' };
+    case '/methodology':
+      return { name: 'methodology' };
+    case '/accessibility':
+      return { name: 'accessibility' };
+    default:
+      return { name: 'intro' };
+  }
+}
+
+export function routeToHash(route: Route): string {
+  switch (route.name) {
+    case 'intro':
+      return '#/';
+    case 'question':
+      return `#/q/${route.index + 1}`;
+    case 'needMore':
+      return '#/need-more';
+    case 'result':
+      return '#/result';
+    case 'map':
+      return '#/map';
+    case 'methodology':
+      return '#/methodology';
+    case 'accessibility':
+      return '#/accessibility';
+  }
+}
+
+export function sameRoute(a: Route, b: Route): boolean {
+  return routeToHash(a) === routeToHash(b);
+}

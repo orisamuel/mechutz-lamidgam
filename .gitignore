@@ -1,0 +1,13 @@
+node_modules
+dist
+*.log
+.DS_Store
+.env
+.env.*
+!.env.example
+
+# Reference photos used to brief the portrait illustrations. Copyrighted — never commit.
+references/
+
+# Local tooling
+.claude/

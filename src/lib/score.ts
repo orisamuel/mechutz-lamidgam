@@ -1,0 +1,173 @@
+import { ARCHETYPES, emptyScores, type ArchetypeId, type ScoreMap } from '../data/archetypes';
+import type { Answer, Answers, AxisQuestion, Question } from '../data/types';
+import { answersHash } from './hash';
+
+/** Points an axis anchor gives fall linearly from 3 (exact hit) to 0 at this distance. */
+export const AXIS_SPREAD = 35;
+export const AXIS_MAX_POINTS = 3;
+/** Fewer answered questions than this → no result; ask for more positions. */
+export const MIN_ANSWERS = 6;
+/** Scores closer than this count as a tie and go to the tie-break cascade. */
+export const TIE_EPSILON = 0.25;
+/** A question counts as a "primary hit" for an archetype at this many points or more. */
+export const PRIMARY_HIT = 2.5;
+
+/**
+ * percent = clamp(round(PCT_BASE + PCT_RANGE × r), PCT_MIN, PCT_MAX), r = winner score / winner max.
+ * Calibrated by simulation (GAME_SPEC.md §7): a random respondent lands around 84%,
+ * a fully consistent one at 96%. The spec's original 70 + 25r put almost everyone at 80–86%.
+ */
+export const PCT_BASE = 64;
+export const PCT_RANGE = 40;
+export const PCT_MIN = 72;
+export const PCT_MAX = 96;
+
+export type TieBreak = 'none' | 'axis' | 'primary' | 'hash';
+
+export interface ScoreResult {
+  winner: ArchetypeId;
+  ranking: { archetype: ArchetypeId; score: number }[];
+  scores: ScoreMap;
+  /** Theoretical max per archetype, over the answered questions only. */
+  maxima: ScoreMap;
+  /** Points per answered (non-skipped) question. */
+  perQuestion: Record<string, ScoreMap>;
+  answeredIds: string[];
+  skippedIds: string[];
+  /** winner score / winner max, 0–1. */
+  affinity: number;
+  percent: number;
+  tieBreak: TieBreak;
+}
+
+export function isAnswered(answer: Answer | undefined): boolean {
+  return answer !== undefined && answer.kind !== 'skip';
+}
+
+export function countAnswered(questions: Question[], answers: Answers): number {
+  return questions.filter((q) => isAnswered(answers[q.id])).length;
+}
+
+export function axisPoints(question: AxisQuestion, value: number): ScoreMap {
+  const points = emptyScores();
+  for (const anchor of question.anchors) {
+    const distance = Math.abs(value - anchor.at);
+    const p = AXIS_MAX_POINTS * Math.max(0, 1 - distance / AXIS_SPREAD);
+    points[anchor.archetype] = Math.max(points[anchor.archetype], p);
+  }
+  return points;
+}
+
+/** Points the answer gives each archetype, or null when unanswered/skipped/invalid. */
+export function questionPoints(question: Question, answer: Answer | undefined): ScoreMap | null {
+  if (!answer || answer.kind === 'skip') return null;
+  if (question.kind === 'axis') {
+    if (answer.kind !== 'axis') return null;
+    return axisPoints(question, clampValue(answer.value));
+  }
+  if (answer.kind !== 'choice') return null;
+  const option = question.options.find((o) => o.id === answer.optionId);
+  if (!option) return null;
+  const points = emptyScores();
+  for (const archetype of ARCHETYPES) points[archetype] = option.weights[archetype] ?? 0;
+  return points;
+}
+
+/** The most points each archetype could get from this question. */
+export function questionMax(question: Question): ScoreMap {
+  const max = emptyScores();
+  if (question.kind === 'axis') {
+    for (const anchor of question.anchors) max[anchor.archetype] = AXIS_MAX_POINTS;
+    return max;
+  }
+  for (const option of question.options) {
+    for (const archetype of ARCHETYPES) {
+      max[archetype] = Math.max(max[archetype], option.weights[archetype] ?? 0);
+    }
+  }
+  return max;
+}
+
+export function percentFromAffinity(affinity: number): number {
+  const raw = Math.round(PCT_BASE + PCT_RANGE * affinity);
+  return Math.min(PCT_MAX, Math.max(PCT_MIN, raw));
+}
+
+export function computeResult(questions: Question[], answers: Answers): ScoreResult | null {
+  const scores = emptyScores();
+  const maxima = emptyScores();
+  const perQuestion: Record<string, ScoreMap> = {};
+  const answeredIds: string[] = [];
+  const skippedIds: string[] = [];
+
+  for (const question of questions) {
+    const answer = answers[question.id];
+    if (answer?.kind === 'skip') skippedIds.push(question.id);
+    const points = questionPoints(question, answer);
+    if (!points) continue;
+    answeredIds.push(question.id);
+    perQuestion[question.id] = points;
+    const max = questionMax(question);
+    for (const archetype of ARCHETYPES) {
+      scores[archetype] += points[archetype];
+      maxima[archetype] += max[archetype];
+    }
+  }
+
+  if (answeredIds.length < MIN_ANSWERS) return null;
+
+  const { winner, tieBreak } = pickWinner(questions, answers, scores, perQuestion);
+  const ranking = ARCHETYPES.map((archetype) => ({ archetype, score: scores[archetype] })).sort(
+    (a, b) => (a.archetype === winner ? -1 : b.archetype === winner ? 1 : b.score - a.score),
+  );
+  const affinity = maxima[winner] > 0 ? scores[winner] / maxima[winner] : 0;
+
+  return {
+    winner,
+    ranking,
+    scores,
+    maxima,
+    perQuestion,
+    answeredIds,
+    skippedIds,
+    affinity,
+    percent: percentFromAffinity(affinity),
+    tieBreak,
+  };
+}
+
+/**
+ * Tie-break cascade — always terminates with exactly one winner:
+ * 1. total score; 2. points from slider questions (the hidden "axis tie-breaker");
+ * 3. number of primary hits; 4. deterministic hash of the answers.
+ */
+function pickWinner(
+  questions: Question[],
+  answers: Answers,
+  scores: ScoreMap,
+  perQuestion: Record<string, ScoreMap>,
+): { winner: ArchetypeId; tieBreak: TieBreak } {
+  let tied = leaders([...ARCHETYPES], (a) => scores[a]);
+  if (tied.length === 1) return { winner: tied[0]!, tieBreak: 'none' };
+
+  const axisIds = questions.filter((q) => q.kind === 'axis' && perQuestion[q.id]).map((q) => q.id);
+  tied = leaders(tied, (a) => axisIds.reduce((sum, id) => sum + perQuestion[id]![a], 0));
+  if (tied.length === 1) return { winner: tied[0]!, tieBreak: 'axis' };
+
+  tied = leaders(tied, (a) => Object.values(perQuestion).filter((p) => p[a] >= PRIMARY_HIT).length);
+  if (tied.length === 1) return { winner: tied[0]!, tieBreak: 'primary' };
+
+  const index = answersHash(answers) % tied.length;
+  return { winner: tied[index]!, tieBreak: 'hash' };
+}
+
+/** Archetypes whose value is within TIE_EPSILON of the best. Keeps ARCHETYPES order. */
+function leaders(candidates: ArchetypeId[], value: (a: ArchetypeId) => number): ArchetypeId[] {
+  const best = Math.max(...candidates.map(value));
+  return candidates.filter((a) => best - value(a) < TIE_EPSILON);
+}
+
+function clampValue(value: number): number {
+  if (!Number.isFinite(value)) return 50;
+  return Math.min(100, Math.max(0, Math.round(value)));
+}
