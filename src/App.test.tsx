@@ -105,10 +105,16 @@ describe('quiz flow', () => {
     await start(user);
     for (let i = 0; i < QUESTIONS.length; i++) await answerCurrent(user);
 
-    expect(await screen.findByRole('heading', { name: 'אילו סוגיות חשובות לכם במיוחד?' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'מה הכי חשוב לכם?' })).toBeInTheDocument();
     expect(screen.getAllByRole('checkbox')).toHaveLength(QUESTIONS.length);
     await user.click(screen.getByRole('checkbox', { name: /הכיסא בחניה/ }));
-    await user.click(screen.getByRole('button', { name: 'לתוצאה · סוגיה אחת בעדיפות' }));
+    await user.click(screen.getByRole('checkbox', { name: /כריות הנוי/ }));
+    expect(screen.getByText('נבחרו 2 מתוך 2')).toBeInTheDocument();
+    // A third issue can't be added: "בחרו עד שני נושאים".
+    const third = screen.getByRole('checkbox', { name: /המעלית/ });
+    expect(third).toBeDisabled();
+    expect(saved().priorities).toEqual(['q12', 'q11']);
+    await user.click(screen.getByRole('button', { name: 'לתוצאה' }));
 
     expect(await screen.findByRole('heading', { level: 1, name: partyNames })).toBeInTheDocument();
     expect(screen.getByText('זו המפלגה שהכי מתאימה לך')).toBeInTheDocument();

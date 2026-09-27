@@ -401,12 +401,51 @@ button {
   gap: 2px;
 }
 
+.intro__stats {
+  margin: 18px auto 0;
+  width: fit-content;
+  padding: 6px 14px;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--ink);
+  background: #fff;
+}
+
+.slipfan__label {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 18px;
+}
+
+.priorities__counter {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--ink);
+  margin: -8px 0 14px;
+}
+
+.check.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 /* ---------- Footer ---------- */
 
 .footer {
   display: flex;
   justify-content: center;
+  align-items: center;
+  gap: 10px;
   padding: 4px 16px 20px;
+}
+
+.footer__updated {
+  font-size: 13px;
+  color: var(--muted);
 }
 
 .footer .link-button {

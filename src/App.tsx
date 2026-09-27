@@ -21,6 +21,8 @@ import { TextPage } from './pages/TextPage';
 const LOADING_MS = import.meta.env.MODE === 'test' ? 0 : prefersReducedMotion() ? 600 : 1100;
 
 /** An untouched slider answered with "המשך" means exactly the middle. */
+/** "בחרו עד שני נושאים" — the importance step caps how many issues count double. */
+const MAX_PRIORITIES = 2;
 const AXIS_DEFAULT = 50;
 
 export default function App() {
@@ -192,8 +194,11 @@ export default function App() {
           <Priorities
             questions={answeredQuestions}
             selected={priorities}
+            max={MAX_PRIORITIES}
             onToggle={(id) =>
-              setPriorities((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]))
+              setPriorities((prev) =>
+                prev.includes(id) ? prev.filter((p) => p !== id) : prev.length < MAX_PRIORITIES ? [...prev, id] : prev,
+              )
             }
             onContinue={() => showResult(answers, priorities)}
             onSkip={() => {
