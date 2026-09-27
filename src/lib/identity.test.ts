@@ -1,12 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { bandIndex } from '../data/axes';
-import { PARTIES, partyForArchetype, type Party } from '../data/parties';
+import { PARTIES, partyForArchetype } from '../data/parties';
 import { QUESTIONS } from '../data/questions';
 import type { Answers } from '../data/types';
 import { axisReadings, identityParts, identitySentence, shareText } from './identity';
-import { agreementCount, matchLine } from './microcopy';
-import { computeResult } from './score';
-import { mulberry32, personaAnswers, randomAnswers } from './simulate';
+import { flavorLine } from './microcopy';
 
 describe('bands', () => {
   it.each([
@@ -26,7 +24,7 @@ describe('bands', () => {
 
   it('uses the physical poles: falafel and AC are on the right', () => {
     const readings = axisReadings(QUESTIONS, { q1: { kind: 'axis', value: 90 }, q6: { kind: 'axis', value: 10 } });
-    expect(readings.map((r) => r.descriptor)).toEqual(['ימין־פלאפל', 'שמאל־חלון']);
+    expect(readings.map((r) => r.descriptor).sort()).toEqual(['ימין־פלאפל', 'שמאל־חלון'].sort());
   });
 });
 
@@ -69,43 +67,17 @@ describe('identity sentence', () => {
 
 });
 
-describe('micro-copy', () => {
-  it('derives "X מתוך Y" from the percentage, as in the brief (93% of 12 → 11)', () => {
-    const fake = { answeredIds: Array.from({ length: 12 }, (_, i) => `q${i}`), percent: 93 };
-    expect(agreementCount(fake as never)).toBe(11);
+describe('flavor line', () => {
+  it('shows the party punch line only when it is true for these answers', () => {
+    const pirates = partyForArchetype('digital_autonomy'); // needs the elevator answer a or d
+    expect(flavorLine(pirates, { q5: { kind: 'choice', optionId: 'd' } })).toBe('בנושא המעלית נמצאה ביניכם תמימות דעים.');
+    expect(flavorLine(pirates, { q5: { kind: 'choice', optionId: 'c' } })).toBeNull();
+    expect(flavorLine(pirates, {})).toBeNull();
   });
 
-  it('shows the party flavor line when it is true for these answers', () => {
-    const answers = personaAnswers(QUESTIONS, 'digital_autonomy'); // picks the elevator answer the flavor needs
-    const result = computeResult(QUESTIONS, answers)!;
-    const line = matchLine(result, QUESTIONS, answers, partyForArchetype(result.winner));
-    expect(line).toContain('בנושא המעלית נמצאה ביניכם תמימות דעים.');
+  it('gives the no-opinion winner its line', () => {
+    expect(flavorLine(partyForArchetype('peace_and_quiet'), {})).toBe('המערכת זיהתה אצלך נטייה חזקה לשקט.');
   });
-
-  it('reports an abstention when everything else agrees', () => {
-    const answers = personaAnswers(QUESTIONS, 'human_consensus'); // q1 and q4 skipped; q6 centered, so no flavor
-    const result = computeResult(QUESTIONS, answers)!;
-    const line = matchLine(result, QUESTIONS, answers, partyForArchetype(result.winner));
-    expect(line).toBe(`ב־${result.answeredIds.length} מתוך ${result.answeredIds.length} סוגיות נמצאה התאמה. בנושא הפיצה והפלאפל נרשמה הימנעות.`);
-  });
-
-  it('never contradicts itself across random respondents', () => {
-    const neverFlavor = (p: Party): Party => ({ ...p, flavor: { ...p.flavor, when: [] } });
-    const rand = mulberry32(5);
-    for (let i = 0; i < 1000; i++) {
-      const answers = randomAnswers(QUESTIONS, rand);
-      const result = computeResult(QUESTIONS, answers);
-      if (!result) continue;
-      const answered = result.answeredIds.length;
-      const agree = agreementCount(result);
-      const line = matchLine(result, QUESTIONS, answers, neverFlavor(partyForArchetype(result.winner)));
-      expect(line.startsWith(`ב־${agree} מתוך ${answered} סוגיות נמצאה התאמה.`)).toBe(true);
-      const gapLine = /בנושא .+ נרשמו פערים\./;
-      if (agree === answered) expect(line).not.toMatch(gapLine);
-      else expect(line).toMatch(gapLine);
-    }
-  });
-
   it('maps every archetype to exactly one party', () => {
     expect(new Set(PARTIES.map((p) => p.archetype)).size).toBe(PARTIES.length);
   });

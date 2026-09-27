@@ -5,8 +5,9 @@ import { answersHash } from './hash';
 /** Points an axis anchor gives fall linearly from 3 (exact hit) to 0 at this distance. */
 export const AXIS_SPREAD = 35;
 export const AXIS_MAX_POINTS = 3;
-/** Fewer answered questions than this → no result; ask for more positions. */
-export const MIN_ANSWERS = 6;
+/** Someone with no position on anything still gets a list: the peace-and-quiet one, with confidence. */
+export const NO_OPINION_ARCHETYPE: ArchetypeId = 'peace_and_quiet';
+export const NO_OPINION_PERCENT = 94;
 /** Scores closer than this count as a tie and go to the tie-break cascade. */
 export const TIE_EPSILON = 0.25;
 /** A question counts as a "primary hit" for an archetype at this many points or more. */
@@ -120,7 +121,14 @@ export function percentFromAffinity(affinity: number): number {
   return Math.min(PCT_MAX, Math.max(PCT_MIN, raw));
 }
 
-export function computeResult(questions: Question[], answers: Answers): ScoreResult | null {
+/** Issues the user marks as "חשוב לי במיוחד" count this many times (Wahl-O-Mat style). */
+export const PRIORITY_WEIGHT = 2;
+
+export function computeResult(
+  questions: Question[],
+  answers: Answers,
+  priorities: readonly string[] = [],
+): ScoreResult {
   const scores = emptyScores();
   const maxima = emptyScores();
   const perQuestion: Record<string, ScoreMap> = {};
@@ -133,17 +141,20 @@ export function computeResult(questions: Question[], answers: Answers): ScoreRes
     const points = questionPoints(question, answer);
     if (!points) continue;
     answeredIds.push(question.id);
-    perQuestion[question.id] = points;
+    const weight = priorities.includes(question.id) ? PRIORITY_WEIGHT : 1;
     const max = questionMax(question);
     for (const archetype of ARCHETYPES) {
+      points[archetype] *= weight;
       scores[archetype] += points[archetype];
-      maxima[archetype] += max[archetype];
+      maxima[archetype] += max[archetype] * weight;
     }
+    perQuestion[question.id] = points;
   }
 
-  if (answeredIds.length < MIN_ANSWERS) return null;
-
-  const { winner, tieBreak } = pickWinner(questions, answers, scores, perQuestion);
+  const noOpinion = answeredIds.length === 0;
+  const { winner, tieBreak } = noOpinion
+    ? { winner: NO_OPINION_ARCHETYPE, tieBreak: 'none' as const }
+    : pickWinner(questions, answers, scores, perQuestion);
   const ranking = ARCHETYPES.map((archetype) => ({ archetype, score: scores[archetype] })).sort(
     (a, b) => (a.archetype === winner ? -1 : b.archetype === winner ? 1 : b.score - a.score),
   );
@@ -158,7 +169,7 @@ export function computeResult(questions: Question[], answers: Answers): ScoreRes
     answeredIds,
     skippedIds,
     affinity,
-    percent: percentFromAffinity(affinity),
+    percent: noOpinion ? NO_OPINION_PERCENT : percentFromAffinity(affinity),
     tieBreak,
   };
 }

@@ -46,7 +46,6 @@ export function Intro({ resumeAt, hasResult, onStart, onResume, onRestart, onRes
             {COPY.intro.candidates} <span className="intro__aside">{COPY.intro.aside}</span>
           </p>
         </article>
-        <p className="intro__hint">{COPY.intro.skipHint}</p>
       </main>
 
       <div className="intro__cta">

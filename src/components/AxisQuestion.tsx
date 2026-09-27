@@ -15,8 +15,8 @@ const BIG_STEP = 20;
 
 /**
  * Bipolar slider. Always physically left→right (value 0 on the left), even inside the RTL
- * page, so "ימין־מזגן" really is on the right. The dot waits in the middle from the start;
- * it only counts as an answer once it is touched, dragged or moved with the keyboard.
+ * page, so "ימין־מזגן" really is on the right. The dot starts in the middle; pressing "המשך"
+ * without touching it records exactly the middle.
  */
 export function AxisQuestion({ axis, value, onChange }: Props) {
   const def = AXES[axis];
@@ -76,7 +76,7 @@ export function AxisQuestion({ axis, value, onChange }: Props) {
     onChange(clamp(next));
   };
 
-  const label = value === null ? COPY.quiz.sliderUnset : axisValueLabel(axis, value);
+  const label = axisValueLabel(axis, value ?? 50);
 
   return (
     <div className="axis">
@@ -96,7 +96,7 @@ export function AxisQuestion({ axis, value, onChange }: Props) {
           <div className="axis__track" />
           <div
             ref={thumbRef}
-            className={`axis__thumb${value === null ? ' is-unset' : ''}`}
+            className={`axis__thumb${value === null ? ' is-idle' : ''}`}
             style={{ left: `${value ?? 50}%` }}
             role="slider"
             tabIndex={0}

@@ -4,8 +4,10 @@ import { describe, expect, it } from 'vitest';
 import App from './App';
 import { PARTIES } from './data/parties';
 import { QUESTIONS } from './data/questions';
+import { STORAGE_KEY } from './lib/storage';
 
 const progress = (n: number) => `שאלה ${n} מתוך ${QUESTIONS.length}`;
+const partyNames = new RegExp(`^(${PARTIES.map((p) => p.name).join('|')})$`);
 
 async function start(user: UserEvent) {
   await user.click(screen.getByRole('button', { name: /^מתחילים/ }));
@@ -25,21 +27,41 @@ async function answerCurrent(user: UserEvent) {
 }
 
 const skipCurrent = (user: UserEvent) => user.click(screen.getByRole('button', { name: 'אין לי עמדה בנושא' }));
+const saved = () => JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? '{}');
 
 describe('quiz flow', () => {
-  it('keeps "המשך" disabled on a slider until a position is chosen', async () => {
+  it('opens with the plastic chair, not with pizza', async () => {
     const user = userEvent.setup();
     render(<App />);
     await start(user);
-    const next = screen.getByRole('button', { name: 'המשך' });
-    expect(next).toBeDisabled();
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('כיסא פלסטיק');
+  });
+
+  it('continuing on an untouched slider records exactly the middle', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await start(user);
+    while (!screen.queryByRole('slider')) await answerCurrent(user);
     const slider = screen.getByRole('slider');
-    expect(slider).toHaveAttribute('aria-valuetext', 'לא נבחרה עמדה');
+    expect(slider).toHaveAttribute('aria-valuenow', '50');
+    expect(slider).toHaveAttribute('aria-valuetext', 'מרכז');
+    const next = screen.getByRole('button', { name: 'המשך' });
+    expect(next).toBeEnabled();
+
+    const sliderQuestion = QUESTIONS.find((q) => q.kind === 'axis')!;
+    await user.click(next);
+    expect(saved().answers[sliderQuestion.id]).toEqual({ kind: 'axis', value: 50 });
+  });
+
+  it('dragging with the keyboard sets the value', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await start(user);
+    while (!screen.queryByRole('slider')) await answerCurrent(user);
+    const slider = screen.getByRole('slider');
     slider.focus();
     await user.keyboard('{End}');
     expect(slider).toHaveAttribute('aria-valuenow', '100');
-    expect(slider).toHaveAttribute('aria-valuetext', 'פלאפל');
-    expect(next).toBeEnabled();
   });
 
   it('survives a refresh mid-quiz: same question, same answer', async () => {
@@ -66,39 +88,41 @@ describe('quiz flow', () => {
     await waitFor(() => expect(screen.getByText(progress(1))).toBeInTheDocument());
   });
 
-  it('with fewer than 6 answers asks for more, then continues to a result', async () => {
+  it('no positions at all still gets a list (and skips the weighting step)', async () => {
     const user = userEvent.setup();
     render(<App />);
     await start(user);
-    for (let i = 0; i < 5; i++) await answerCurrent(user);
-    for (let i = 5; i < QUESTIONS.length; i++) await skipCurrent(user);
+    for (let i = 0; i < QUESTIONS.length; i++) await skipCurrent(user);
 
-    expect(await screen.findByRole('heading', { name: 'נדרשות עוד עמדות' })).toBeInTheDocument();
-    expect(screen.getByText(/עד עכשיו נרשמו 5/)).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: 'לסוגיות הפתוחות' }));
-    expect(screen.getByText(progress(6))).toBeInTheDocument();
-    await answerCurrent(user);
-
-    const heading = await screen.findByRole('heading', { level: 1 });
-    expect(PARTIES.map((p) => p.name)).toContain(heading.textContent);
-    expect(screen.getByText(/סוגיות נמצאה התאמה/)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'גן עדן' })).toBeInTheDocument();
+    expect(screen.getByText('94%')).toBeInTheDocument();
+    expect(screen.getByText('המערכת זיהתה אצלך נטייה חזקה לשקט.')).toBeInTheDocument();
   });
 
-  it('a full run shows the winner plus two runners-up; retake starts over', async () => {
+  it('a full run: weighting step, then the winner with two runners-up right under it', async () => {
     const user = userEvent.setup();
     render(<App />);
     await start(user);
     for (let i = 0; i < QUESTIONS.length; i++) await answerCurrent(user);
 
-    const heading = await screen.findByRole('heading', { level: 1 });
-    expect(PARTIES.map((p) => p.name)).toContain(heading.textContent);
+    expect(await screen.findByRole('heading', { name: 'אילו סוגיות חשובות לכם במיוחד?' })).toBeInTheDocument();
+    expect(screen.getAllByRole('checkbox')).toHaveLength(QUESTIONS.length);
+    await user.click(screen.getByRole('checkbox', { name: /הכיסא בחניה/ }));
+    await user.click(screen.getByRole('button', { name: 'לתוצאה · סוגיה אחת בעדיפות' }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: partyNames })).toBeInTheDocument();
     expect(screen.getByText('זו המפלגה שהכי מתאימה לך')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'שתפו את התוצאה' })).toBeInTheDocument();
+    expect(screen.queryByText(/סוגיות נמצאה התאמה/)).not.toBeInTheDocument();
+    expect(screen.queryByText('המיקום שלך')).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /למצע המפלגה|לעמוד המפלגה/ })).toHaveAttribute('target', '_blank');
 
-    const runners = within(screen.getByRole('region', { name: 'ההתאמות הבאות' })).getAllByRole('listitem');
+    const runnersRegion = screen.getByRole('region', { name: 'ההתאמות הבאות' });
+    const runners = within(runnersRegion).getAllByRole('listitem');
     expect(runners).toHaveLength(2);
+    // Runners-up sit right under the main match, before the party's text and the share button.
+    const shareButton = screen.getByRole('button', { name: 'שתפו את התוצאה' });
+    expect(runnersRegion.compareDocumentPosition(shareButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
     const percents = [screen.getAllByText(/^\d{2}%$/)[0]!, ...runners.map((r) => within(r).getByText(/^\d{1,2}%$/))].map(
       (el) => Number(el.textContent!.replace('%', '')),
     );
@@ -107,7 +131,6 @@ describe('quiz flow', () => {
 
     await user.click(screen.getByRole('button', { name: 'עשו שוב' }));
     expect(screen.getByText(progress(1))).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'המשך' })).toBeDisabled();
   });
 
   it('does not let a fresh visitor jump ahead via the URL', () => {

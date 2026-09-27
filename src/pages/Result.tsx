@@ -18,8 +18,9 @@ interface Props {
   party: Party;
   percent: number;
   body: string;
-  micro: string;
-  identityParts: string[];
+  /** The party's one-line punch, when it is true for these answers. */
+  flavor: string | null;
+  /** Identity sentence for the share card. */
   identity: string;
   shareText: string;
   displayUrl: string;
@@ -33,7 +34,7 @@ interface Props {
 type Blobs = Partial<Record<CardFormat, Blob>>;
 
 export function Result(props: Props) {
-  const { party, percent, body, micro, identityParts, identity, shareText, displayUrl, runnersUp, onToast } = props;
+  const { party, percent, body, flavor, identity, shareText, displayUrl, runnersUp, onToast } = props;
   const [blobs, setBlobs] = useState<Blobs>({});
   const runnersKey = runnersUp.map((r) => `${r.party.id}:${r.percent}`).join('|');
 
@@ -107,20 +108,43 @@ export function Result(props: Props) {
             </div>
           </div>
 
+          {runnersUp.length > 0 && (
+            <section className="runners" aria-labelledby="runners-title">
+              <h2 id="runners-title" className="runners__title">
+                {COPY.result.runnersUp}
+              </h2>
+              <ol className="runners__list">
+                {runnersUp.map(({ party: p, percent: pct }, i) => (
+                  <li key={p.id} className="runner">
+                    <span className="runner__rank" aria-hidden="true">
+                      {i + 2}
+                    </span>
+                    {p.portrait ? (
+                      <img className="runner__face" src={asset(p.portrait)} alt="" width={56} height={70} />
+                    ) : (
+                      <span className="runner__face" />
+                    )}
+                    <div className="runner__body">
+                      <div className="runner__row">
+                        <span className="runner__name">
+                          {p.name}
+                          {p.letters && <span className="runner__letters">{p.letters}</span>}
+                        </span>
+                        <span className="runner__pct">{pct}%</span>
+                      </div>
+                      <div className="bar" aria-hidden="true">
+                        <span style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
+
           <h2 className="result__title">{party.title}</h2>
           <p className="result__body">{body}</p>
-
-          {identityParts.length > 0 && (
-            <div className="result__identity">
-              <p className="result__identity-label">{COPY.result.identityLabel}</p>
-              <ul className="chips">
-                {identityParts.map((part) => (
-                  <li key={part}>{part}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          <p className="result__micro">{micro}</p>
+          {flavor && <p className="result__flavor">{flavor}</p>}
 
           <div className="result__actions">
             <button type="button" className="btn btn--primary btn--block btn--lg" onClick={() => void share('post')}>
@@ -136,40 +160,6 @@ export function Result(props: Props) {
             </button>
           </div>
         </article>
-
-        {runnersUp.length > 0 && (
-          <section className="runners" aria-labelledby="runners-title">
-            <h2 id="runners-title" className="runners__title">
-              {COPY.result.runnersUp}
-            </h2>
-            <ol className="runners__list">
-              {runnersUp.map(({ party: p, percent: pct }, i) => (
-                <li key={p.id} className="runner">
-                  <span className="runner__rank" aria-hidden="true">
-                    {i + 2}
-                  </span>
-                  {p.portrait ? (
-                    <img className="runner__face" src={asset(p.portrait)} alt="" width={56} height={70} />
-                  ) : (
-                    <span className="runner__face" />
-                  )}
-                  <div className="runner__body">
-                    <div className="runner__row">
-                      <span className="runner__name">
-                        {p.name}
-                        {p.letters && <span className="runner__letters">{p.letters}</span>}
-                      </span>
-                      <span className="runner__pct">{pct}%</span>
-                    </div>
-                    <div className="bar" aria-hidden="true">
-                      <span style={{ width: `${pct}%` }} />
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </section>
-        )}
 
         <div className="result__again">
           <button type="button" className="link-button" onClick={props.onRetake}>

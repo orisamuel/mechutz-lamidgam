@@ -9,11 +9,10 @@ const CP = 'ceremony_presence';
 const PR = 'process_reform';
 
 /**
- * The 12 main questions. Source of truth for GAME_SPEC.md tables.
- * Q4 (the "seventh season" question) was moved to the reserve bank and replaced by the
- * sea/desert slider, so that all four map axes come from direct answers.
+ * The 12 main questions (ids are stable; display order is ORDER below). Source of truth for GAME_SPEC.md.
+ * The old "seventh season" question moved to the reserve bank and was replaced by the sea/desert slider.
  */
-export const QUESTIONS: Question[] = [
+const BANK: Question[] = [
   {
     id: 'q1',
     kind: 'axis',
@@ -171,5 +170,14 @@ export const QUESTIONS: Question[] = [
     ],
   },
 ];
+
+/** Display order: open with the strongest question, sliders spread out, a strong closer. */
+const ORDER = ['q12', 'q2', 'q6', 'q5', 'q10', 'q1', 'q8', 'q11', 'q9', 'q7', 'q4', 'q3'];
+
+export const QUESTIONS: Question[] = ORDER.map((id) => {
+  const q = BANK.find((b) => b.id === id);
+  if (!q) throw new Error(`Unknown question `);
+  return q;
+});
 
 export const QUESTION_COUNT = QUESTIONS.length;

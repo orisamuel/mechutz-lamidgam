@@ -20,7 +20,8 @@ interface Props {
 export function Quiz({ question, index, total, answer, onAnswer, onNext, onBack, onSkip, onHome }: Props) {
   const selectedId = answer?.kind === 'choice' ? answer.optionId : null;
   const value = answer?.kind === 'axis' ? answer.value : null;
-  const canContinue = question.kind === 'choice' ? selectedId !== null : value !== null;
+  // Sliders can always continue: untouched means exactly the middle.
+  const canContinue = question.kind === 'choice' ? selectedId !== null : true;
 
   return (
     <div className="page">

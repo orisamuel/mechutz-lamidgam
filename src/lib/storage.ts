@@ -6,28 +6,37 @@ const SCHEMA_VERSION = 1;
 interface Persisted {
   v: number;
   answers: Answers;
+  /** Question ids marked "חשוב לי במיוחד". Optional: older saves don't have it. */
+  priorities?: string[];
 }
 
+export interface SavedState {
+  answers: Answers;
+  priorities: string[];
+}
+
+const EMPTY: SavedState = { answers: {}, priorities: [] };
+
 /**
- * Restores saved answers. Anything that no longer matches the current questions
+ * Restores saved progress. Anything that no longer matches the current questions
  * (removed question, renamed option, bad value) is dropped rather than trusted.
  */
-export function loadAnswers(questions: Question[]): Answers {
+export function loadState(questions: Question[]): SavedState {
   let raw: string | null = null;
   try {
     raw = window.localStorage.getItem(STORAGE_KEY);
   } catch {
-    return {};
+    return { ...EMPTY };
   }
-  if (!raw) return {};
+  if (!raw) return { ...EMPTY };
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch {
-    return {};
+    return { ...EMPTY };
   }
-  if (!isRecord(parsed) || parsed.v !== SCHEMA_VERSION || !isRecord(parsed.answers)) return {};
+  if (!isRecord(parsed) || parsed.v !== SCHEMA_VERSION || !isRecord(parsed.answers)) return { ...EMPTY };
 
   const stored = parsed.answers;
   const answers: Answers = {};
@@ -35,11 +44,15 @@ export function loadAnswers(questions: Question[]): Answers {
     const a = stored[q.id];
     if (isValidAnswer(q, a)) answers[q.id] = a;
   }
-  return answers;
+  const ids = new Set(questions.map((q) => q.id));
+  const priorities = Array.isArray(parsed.priorities)
+    ? parsed.priorities.filter((id): id is string => typeof id === 'string' && ids.has(id))
+    : [];
+  return { answers, priorities };
 }
 
-export function saveAnswers(answers: Answers): void {
-  const data: Persisted = { v: SCHEMA_VERSION, answers };
+export function saveState(answers: Answers, priorities: string[]): void {
+  const data: Persisted = { v: SCHEMA_VERSION, answers, priorities };
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch {
@@ -47,7 +60,7 @@ export function saveAnswers(answers: Answers): void {
   }
 }
 
-export function clearAnswers(): void {
+export function clearState(): void {
   try {
     window.localStorage.removeItem(STORAGE_KEY);
   } catch {

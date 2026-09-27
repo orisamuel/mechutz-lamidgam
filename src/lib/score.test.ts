@@ -5,10 +5,12 @@ import { mulberry32, randomAnswers } from './simulate';
 import {
   axisPoints,
   computeResult,
-  MIN_ANSWERS,
+  NO_OPINION_ARCHETYPE,
+  NO_OPINION_PERCENT,
   PCT_MAX,
   PCT_MIN,
   percentFromAffinity,
+  PRIORITY_WEIGHT,
   questionPoints,
   RUNNER_UP_MIN,
   TIE_EPSILON,
@@ -74,23 +76,18 @@ describe('axisPoints', () => {
 });
 
 describe('computeResult', () => {
-  it(`needs at least ${MIN_ANSWERS} answered questions; skips do not count`, () => {
-    const answers: Answers = {};
-    QUESTIONS.forEach((q, i) => {
-      if (i < MIN_ANSWERS - 1 && q.kind === 'choice') answers[q.id] = pick('a');
-      else if (i < MIN_ANSWERS - 1) answers[q.id] = { kind: 'axis', value: 30 };
-      else answers[q.id] = { kind: 'skip' };
-    });
-    expect(computeResult(QUESTIONS, answers)).toBeNull();
+  it('gives a result even with no positions at all: peace and quiet, confidently', () => {
+    const allSkipped: Answers = Object.fromEntries(QUESTIONS.map((q) => [q.id, { kind: 'skip' }]));
+    const none = computeResult(QUESTIONS, allSkipped);
+    expect(none.winner).toBe(NO_OPINION_ARCHETYPE);
+    expect(none.percent).toBe(NO_OPINION_PERCENT);
+    expect(none.answeredIds).toHaveLength(0);
+    expect(none.skippedIds).toHaveLength(QUESTIONS.length);
+    expect(topMatches(none)).toHaveLength(3);
 
-    const sixth = QUESTIONS[MIN_ANSWERS - 1]!;
-    answers[sixth.id] = sixth.kind === 'choice' ? pick('a') : { kind: 'axis', value: 30 };
-    const result = computeResult(QUESTIONS, answers)!;
-    expect(result).not.toBeNull();
-    expect(result.answeredIds).toHaveLength(MIN_ANSWERS);
-    expect(result.skippedIds).toHaveLength(QUESTIONS.length - MIN_ANSWERS);
+    const one = computeResult(QUESTIONS, { ...allSkipped, q2: pick('c') });
+    expect(one.winner).toBe('digital_autonomy');
   });
-
   it('keeps the percentage between the bounds and never shows 100%', () => {
     expect(percentFromAffinity(0)).toBe(PCT_MIN);
     expect(percentFromAffinity(1)).toBe(PCT_MAX);
@@ -110,6 +107,28 @@ describe('computeResult', () => {
     const b = computeResult(QUESTIONS, structuredClone(answers))!;
     expect(b.winner).toBe(a.winner);
     expect(b.percent).toBe(a.percent);
+  });
+});
+
+describe('priorities (the "important to me" step)', () => {
+  it(`counts a marked issue ${PRIORITY_WEIGHT}× in both the score and the maximum`, () => {
+    const answers = randomAnswers(QUESTIONS, mulberry32(8), { skipRate: 0 });
+    const plain = computeResult(QUESTIONS, answers)!;
+    const weighted = computeResult(QUESTIONS, answers, ['q2'])!;
+    const q2 = questionPoints(byId('q2'), answers.q2)!;
+    for (const a of Object.keys(plain.scores) as (keyof typeof plain.scores)[]) {
+      expect(weighted.scores[a]).toBeCloseTo(plain.scores[a] + q2[a] * (PRIORITY_WEIGHT - 1));
+    }
+    expect(weighted.perQuestion.q2!.digital_autonomy).toBe(q2.digital_autonomy * PRIORITY_WEIGHT);
+  });
+
+  it('can change the winner', () => {
+    const duel = (id: string) => choiceQ(id, { a: { digital_autonomy: 3 }, b: { procedural_order: 3 } });
+    const questions = ['a1', 'a2', 'a3', 'b1', 'b2'].map(duel).concat(choiceQ('f', { z: { human_consensus: 1 } }));
+    const answers: Answers = { a1: pick('a'), a2: pick('a'), a3: pick('a'), b1: pick('b'), b2: pick('b'), f: pick('z') };
+    // Plain: DA 9 vs PO 6. With b1 and b2 marked important: DA 9 vs PO 12.
+    expect(computeResult(questions, answers)!.winner).toBe('digital_autonomy');
+    expect(computeResult(questions, answers, ['b1', 'b2'])!.winner).toBe('procedural_order');
   });
 });
 

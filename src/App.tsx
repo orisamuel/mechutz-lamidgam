@@ -6,32 +6,37 @@ import { QUESTIONS, QUESTION_COUNT } from './data/questions';
 import type { Answer, Answers } from './data/types';
 import { track } from './lib/analytics';
 import { identityParts, identitySentence, shareText } from './lib/identity';
-import { matchLine, pickBody } from './lib/microcopy';
+import { flavorLine, pickBody } from './lib/microcopy';
 import { parseHash, routeToHash, sameRoute, type Route } from './lib/router';
-import { computeResult, countAnswered, MIN_ANSWERS, topMatches } from './lib/score';
+import { computeResult, isAnswered, topMatches } from './lib/score';
 import { displayUrl, siteUrl } from './lib/share';
-import { clearAnswers, loadAnswers, saveAnswers } from './lib/storage';
+import { clearState, loadState, saveState } from './lib/storage';
 import { Intro } from './pages/Intro';
 import { Loading } from './pages/Loading';
-import { NeedMore } from './pages/NeedMore';
+import { Priorities } from './pages/Priorities';
 import { Quiz } from './pages/Quiz';
 import { Result } from './pages/Result';
 import { TextPage } from './pages/TextPage';
 
 const LOADING_MS = import.meta.env.MODE === 'test' ? 0 : prefersReducedMotion() ? 600 : 1100;
 
+/** An untouched slider answered with "המשך" means exactly the middle. */
+const AXIS_DEFAULT = 50;
+
 export default function App() {
-  const [answers, setAnswers] = useState<Answers>(() => loadAnswers(QUESTIONS));
+  const [initial] = useState(() => loadState(QUESTIONS));
+  const [answers, setAnswers] = useState<Answers>(initial.answers);
+  const [priorities, setPriorities] = useState<string[]>(initial.priorities);
   const [route, setRoute] = useState<Route>(() => parseHash(window.location.hash));
   const [loading, setLoading] = useState(false);
-  const [reviewMode, setReviewMode] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
-  const result = useMemo(() => computeResult(QUESTIONS, answers), [answers]);
+  const result = useMemo(() => computeResult(QUESTIONS, answers, priorities), [answers, priorities]);
   const firstUnvisited = QUESTIONS.findIndex((q) => answers[q.id] === undefined);
   const allVisited = firstUnvisited === -1;
+  const answeredQuestions = QUESTIONS.filter((q) => isAnswered(answers[q.id]));
 
-  useEffect(() => saveAnswers(answers), [answers]);
+  useEffect(() => saveState(answers, priorities), [answers, priorities]);
 
   // Browser back/forward and manual hash edits.
   useEffect(() => {
@@ -61,19 +66,17 @@ export default function App() {
     [navigate],
   );
 
-  // Guards: no jumping ahead of unvisited questions, no result without enough answers.
+  // Guards: no jumping ahead of unvisited questions; results only after going through the quiz.
   const guarded = useMemo<Route>(() => {
     if (route.name === 'question') {
       const reachable = allVisited ? QUESTION_COUNT - 1 : firstUnvisited;
       return route.index > reachable ? { name: 'question', index: reachable } : route;
     }
-    if (route.name === 'result') {
-      if (result) return route;
-      return allVisited ? { name: 'needMore' } : { name: 'question', index: firstUnvisited };
+    if ((route.name === 'result' || route.name === 'priorities') && !allVisited) {
+      return { name: 'question', index: firstUnvisited };
     }
-    if (route.name === 'needMore' && result) return { name: 'result' };
     return route;
-  }, [route, result, allVisited, firstUnvisited]);
+  }, [route, allVisited, firstUnvisited]);
 
   useEffect(() => {
     if (!sameRoute(guarded, route)) navigate(guarded, true);
@@ -86,15 +89,10 @@ export default function App() {
     document.getElementById('page-title')?.focus({ preventScroll: true });
   }, [screenKey]);
 
-  const finish = useCallback(
-    (current: Answers) => {
-      setReviewMode(false);
-      const r = computeResult(QUESTIONS, current);
-      if (!r) {
-        navigate({ name: 'needMore' });
-        return;
-      }
-      track('quiz_complete', { party: partyForArchetype(r.winner).id });
+  /** The short "placing you on the map" beat, then the result. */
+  const showResult = useCallback(
+    (current: Answers, chosen: string[]) => {
+      track('quiz_complete', { party: partyForArchetype(computeResult(QUESTIONS, current, chosen).winner).id });
       setLoading(true);
       window.setTimeout(() => {
         setLoading(false);
@@ -104,25 +102,29 @@ export default function App() {
     [navigate],
   );
 
+  /** After the last question: the weighting step, unless there is nothing to weigh. */
+  const finish = useCallback(
+    (current: Answers) => {
+      if (QUESTIONS.some((q) => isAnswered(current[q.id]))) navigate({ name: 'priorities' });
+      else showResult(current, []);
+    },
+    [navigate, showResult],
+  );
+
   const advance = useCallback(
     (from: number, current: Answers) => {
-      if (reviewMode) {
-        if (countAnswered(QUESTIONS, current) >= MIN_ANSWERS) return finish(current);
-        const next = nextOpenQuestion(current, from);
-        return next === -1 ? finish(current) : navigate({ name: 'question', index: next });
-      }
       if (from < QUESTION_COUNT - 1) navigate({ name: 'question', index: from + 1 });
       else finish(current);
     },
-    [reviewMode, finish, navigate],
+    [finish, navigate],
   );
 
   const setAnswer = (questionId: string, answer: Answer) => setAnswers((prev) => ({ ...prev, [questionId]: answer }));
 
   const restart = () => {
-    clearAnswers();
+    clearState();
     setAnswers({});
-    setReviewMode(false);
+    setPriorities([]);
     track('retake');
     navigate({ name: 'question', index: 0 });
   };
@@ -143,7 +145,7 @@ export default function App() {
         screen = (
           <Intro
             resumeAt={!allVisited && firstUnvisited > 0 ? firstUnvisited : null}
-            hasResult={allVisited && result !== null}
+            hasResult={allVisited}
             onStart={() => {
               track('quiz_start');
               navigate({ name: 'question', index: 0 });
@@ -166,7 +168,14 @@ export default function App() {
             total={QUESTION_COUNT}
             answer={answers[question.id]}
             onAnswer={(a) => setAnswer(question.id, a)}
-            onNext={() => advance(index, answers)}
+            onNext={() => {
+              let next = answers;
+              if (question.kind === 'axis' && answers[question.id]?.kind !== 'axis') {
+                next = { ...answers, [question.id]: { kind: 'axis', value: AXIS_DEFAULT } };
+                setAnswers(next);
+              }
+              advance(index, next);
+            }}
             onSkip={() => {
               const next: Answers = { ...answers, [question.id]: { kind: 'skip' } };
               setAnswers(next);
@@ -178,25 +187,24 @@ export default function App() {
         );
         break;
       }
-      case 'needMore':
+      case 'priorities':
         screen = (
-          <NeedMore
-            answered={countAnswered(QUESTIONS, answers)}
-            min={MIN_ANSWERS}
-            onContinue={() => {
-              setReviewMode(true);
-              const first = nextOpenQuestion(answers, -1);
-              navigate({ name: 'question', index: first === -1 ? 0 : first });
+          <Priorities
+            questions={answeredQuestions}
+            selected={priorities}
+            onToggle={(id) =>
+              setPriorities((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]))
+            }
+            onContinue={() => showResult(answers, priorities)}
+            onSkip={() => {
+              setPriorities([]);
+              showResult(answers, []);
             }}
             onHome={goHome}
           />
         );
         break;
       case 'result': {
-        if (!result) {
-          screen = <Loading durationMs={0} />;
-          break;
-        }
         const party = partyForArchetype(result.winner);
         const runnersUp = topMatches(result)
           .slice(1)
@@ -206,8 +214,7 @@ export default function App() {
             party={party}
             percent={result.percent}
             body={pickBody(party, answers)}
-            micro={matchLine(result, QUESTIONS, answers, party)}
-            identityParts={parts}
+            flavor={flavorLine(party, answers)}
             identity={identitySentence(parts)}
             shareText={shareText(party.name, result.percent, parts, url)}
             displayUrl={displayUrl(url)}
@@ -240,16 +247,6 @@ export default function App() {
       <Toast message={toast} onDone={clearToast} />
     </>
   );
-}
-
-/** Next skipped/unvisited question after `from`, wrapping around; -1 if none. */
-function nextOpenQuestion(answers: Answers, from: number): number {
-  for (let step = 1; step <= QUESTION_COUNT; step++) {
-    const i = (from + step + QUESTION_COUNT) % QUESTION_COUNT;
-    const a = answers[QUESTIONS[i]!.id];
-    if (a === undefined || a.kind === 'skip') return i;
-  }
-  return -1;
 }
 
 function prefersReducedMotion(): boolean {

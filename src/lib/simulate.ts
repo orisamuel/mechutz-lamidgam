@@ -91,7 +91,7 @@ export function simulate(
   questions: Question[],
   runs: number,
   seed = 26,
-  options: { skipRate?: number; sliders?: SliderModel } = {},
+  options: { skipRate?: number; sliders?: SliderModel; priorityRate?: number } = {},
 ): SimulationSummary {
   const rand = mulberry32(seed);
   const winners = Object.fromEntries(ARCHETYPES.map((a) => [a, 0])) as Record<ArchetypeId, number>;
@@ -100,7 +100,10 @@ export function simulate(
   const affinities: number[] = [];
   let withResult = 0;
   for (let i = 0; i < runs; i++) {
-    const result = computeResult(questions, randomAnswers(questions, rand, options));
+    const answers = randomAnswers(questions, rand, options);
+    // Some respondents mark a few issues as extra important in the weighting step.
+    const priorities = questions.filter(() => rand() < (options.priorityRate ?? 0.15)).map((q) => q.id);
+    const result = computeResult(questions, answers, priorities);
     if (!result) continue;
     withResult++;
     winners[result.winner]++;
