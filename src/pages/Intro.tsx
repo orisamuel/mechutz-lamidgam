@@ -26,7 +26,6 @@ export function Intro({ resumeAt, hasResult, onStart, onResume, onRestart, onRes
       </header>
 
       <main id="main" className="intro">
-        <p className="intro__stats">{COPY.intro.stats}</p>
         <div className="slipfan" aria-hidden="true">
           {PARTIES.map((p, i) => (
             <div key={p.id} className="slipfan__item" style={fanStyle(i)}>
@@ -45,7 +44,10 @@ export function Intro({ resumeAt, hasResult, onStart, onResume, onRestart, onRes
           <p>{COPY.intro.closing}</p>
           <p className="intro__question">{COPY.intro.question}</p>
           <p className="intro__candidates">
-            {COPY.intro.candidates} <span className="intro__aside">{COPY.intro.aside}</span>
+            {/* No-break space: the parenthesis stays glued to "מכוניות המחץ". */}
+            {COPY.intro.candidates}
+            {'\u00A0'}
+            <span className="intro__aside">{COPY.intro.aside}</span>
           </p>
         </article>
       </main>

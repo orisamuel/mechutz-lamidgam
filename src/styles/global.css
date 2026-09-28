@@ -371,9 +371,6 @@ button {
 }
 
 .intro__aside {
-  display: block;
-  margin-top: 4px;
-  font-size: 15px;
   color: var(--muted);
 }
 
@@ -401,17 +398,6 @@ button {
   gap: 2px;
 }
 
-.intro__stats {
-  margin: 18px auto 0;
-  width: fit-content;
-  padding: 6px 14px;
-  border: 1.5px solid var(--ink);
-  border-radius: 999px;
-  font-size: 14px;
-  font-weight: 800;
-  color: var(--ink);
-  background: #fff;
-}
 
 .slipfan__label {
   text-align: center;
