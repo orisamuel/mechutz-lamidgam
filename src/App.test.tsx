@@ -5,6 +5,7 @@ import App from './App';
 import { PARTIES } from './data/parties';
 import { COPY } from './data/copy';
 import { QUESTIONS } from './data/questions';
+import { siteUrl } from './lib/share';
 import { STORAGE_KEY } from './lib/storage';
 
 const progress = (n: number) => `שאלה ${n} מתוך ${QUESTIONS.length}`;
@@ -168,8 +169,8 @@ describe('quiz flow', () => {
     const message = decodeURIComponent(whatsapp.getAttribute('href')!.replace('https://wa.me/?text=', ''));
     const [text, link] = message.split('\n');
     expect(text).toBe('יצא לי שרשר. ומה יוצא לכם?');
-    // The link is the quiz itself, not a result page.
-    expect(link).toBe(window.location.origin + window.location.pathname);
+    // The link is the quiz itself, not a result page (VITE_SITE_URL in CI, the local address otherwise).
+    expect(link).toBe(siteUrl());
     expect(link).not.toContain('/r/');
     expect(within(menu).getAllByRole('link')).toHaveLength(5);
 
