@@ -37,7 +37,7 @@ const BANK: Question[] = [
       },
       {
         id: 'c',
-        label: 'מי שיאחד את העם. נתניהו יכול להיות שר החוץ שלו',
+        label: 'מי שיאחד את העם.\nנתניהו יכול להיות שר החוץ שלו',
         weights: { [SHR]: 3 },
         basis: ['sharsher/pm-netanyahu'],
         stance: 'נתניהו כשר החוץ',
@@ -67,7 +67,7 @@ const BANK: Question[] = [
       },
       {
         id: 'b',
-        label: 'מפעלים ממשלתיים שיקבעו רף למחירים, ופיקוח על מחירי מוצרים חיוניים',
+        label: 'מפעלים ממשלתיים שיקבעו רף למחירים,\nופיקוח על מחירי מוצרים חיוניים',
         weights: { [ANI]: 3 },
         basis: ['ani-veata/state-enterprises'],
         stance: 'מפעלים ממשלתיים שיתחרו בבעלי ההון',
@@ -81,7 +81,7 @@ const BANK: Question[] = [
       },
       {
         id: 'd',
-        label: 'מישהו שיבוא לעשות סדר. העם צמא לכסף',
+        label: 'מישהו שיבוא לעשות סדר.\nהעם צמא לכסף',
         weights: { [SHR]: 3 },
         basis: ['sharsher/money-order'],
         stance: 'מישהו שיבוא לעשות סדר',
@@ -219,7 +219,7 @@ const BANK: Question[] = [
       },
       {
         id: 'd',
-        label: 'הפרדה בין בעלי ההון לשלטון, גם אחרי שהפקיד מסיים את תפקידו',
+        label: 'הפרדה בין בעלי ההון לשלטון,\nגם אחרי שהפקיד מסיים את תפקידו',
         weights: { [ANI]: 3 },
         basis: ['ani-veata/capital-government'],
         stance: 'הפרדת הון ושלטון',
@@ -242,7 +242,7 @@ const BANK: Question[] = [
       },
       {
         id: 'b',
-        label: 'מגדלי שכירות זולה של המדינה ליד כל תחנת רכבת, לזוגות צעירים',
+        label: 'מגדלי שכירות זולה של המדינה\nליד כל תחנת רכבת, לזוגות צעירים',
         weights: { [SDR]: 3 },
         basis: ['seder-chadash/train-rentals'],
         stance: 'מגדלי שכירות ליד תחנות הרכבת',
@@ -373,14 +373,14 @@ const BANK: Question[] = [
       },
       {
         id: 'c',
-        label: 'על רשות רביעית, חברתית, שתייצג את המעמד הנמוך והבינוני',
+        label: 'על רשות רביעית, חברתית,\nשתייצג את המעמד\nהנמוך והבינוני',
         weights: { [ANI]: 3 },
         basis: ['ani-veata/fourth-branch'],
         stance: 'רשות רביעית למעמד הנמוך והבינוני',
       },
       {
         id: 'd',
-        label: 'על הפרדת רשויות: שרים שאינם חברי כנסת, ולכל היותר שתי קדנציות לראש הממשלה',
+        label: 'על הפרדת רשויות:\nשרים שאינם חברי כנסת,\nולכל היותר שתי קדנציות לראש הממשלה',
         weights: { [SDR]: 3 },
         basis: ['seder-chadash/separation', 'seder-chadash/ministers', 'seder-chadash/term-limit'],
         stance: 'הגבלת הקדנציות של ראש הממשלה',

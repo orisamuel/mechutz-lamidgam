@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Phrased } from '../components/Phrased';
 import { COPY } from '../data/copy';
 
 /** 800–1300 ms beat before the result. Lines flip fast; purely decorative. */
@@ -17,7 +18,7 @@ export function Loading({ durationMs }: { durationMs: number }) {
     <div className="page page--loading">
       <main id="main" className="loading">
         <h1 id="page-title" className="loading__title" tabIndex={-1}>
-          {COPY.loading.title}
+          <Phrased text={COPY.loading.title} max={14} />
         </h1>
         <div className="loading__bar" aria-hidden="true">
           <div className="loading__fill" style={{ animationDuration: `${durationMs}ms` }} />

@@ -11,7 +11,8 @@ export const COPY = {
     lead: 'שאלונים שאומרים לכם לאיזו מפלגה להצביע זה נחמד.',
     body: 'אבל שמתם לב שהם אף פעם לא לוקחים בחשבון מפלגות כמו "הפיראטים"?',
     pullQuote: 'מעניין מאוד למה!',
-    closing: 'אז באנו לתקן. הנה השאלון שיגיד לכם מה המפלגה הקטנה (או אם תרצו, הבוטיקית) שהכי קרובה לדעותיכם!',
+    // "\n" = forced line break (see components/Phrased.tsx).
+    closing: 'אז באנו לתקן.\nהנה השאלון שיגיד לכם מה המפלגה הקטנה\n(או אם תרצו, הבוטיקית)\nשהכי קרובה לדעותיכם!',
     question: 'מוכנים?',
     /** Ends on "מכוניות המחץ" so the aside below reads as being about them (rendered inline, never wrapped apart). */
     candidates: 'בואו נגלה אם אתם צריכים להצביע לפיראטים, לשרשר המלך, או אולי למכוניות המחץ',
@@ -62,7 +63,8 @@ export const COPY = {
     copyLink: 'העתקת הקישור',
     /** The per-party pages /r/<slug>/ (older shared links) and their preview images. */
     title: (party: string) => `יצא לי: ${party}`,
-    description: 'השאלון שיגיד לכם מה המפלגה הקטנה (או אם תרצו, הבוטיקית) שהכי קרובה לדעותיכם.',
+    /** Three lines on the preview image; meta tags get it on one line (plain()). */
+    description: 'השאלון שיגיד לכם מה המפלגה הקטנה\n(או אם תרצו, הבוטיקית)\nשהכי קרובה לדעותיכם.',
     cta: 'ומה יוצא לכם?',
     domain: 'lo-ovrot.fun',
     open: 'לשאלון',

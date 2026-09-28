@@ -1,8 +1,10 @@
 import type { CSSProperties } from 'react';
 import { BallotSlip } from '../components/BallotSlip';
+import { Phrased } from '../components/Phrased';
 import { Footer } from '../components/Footer';
 import { COPY } from '../data/copy';
 import { PARTIES } from '../data/parties';
+import { NBSP } from '../lib/phrasing';
 
 interface Props {
   resumeAt: number | null;
@@ -36,18 +38,26 @@ export function Intro({ resumeAt, hasResult, onStart, onResume, onRestart, onRes
         <p className="slipfan__label">{COPY.intro.partiesLabel}</p>
 
         <article className="intro__article">
-          <p className="intro__lead">{COPY.intro.lead}</p>
-          <p>{COPY.intro.body}</p>
+          <p className="intro__lead">
+            <Phrased text={COPY.intro.lead} max={24} />
+          </p>
+          <p>
+            <Phrased text={COPY.intro.body} />
+          </p>
           <p className="intro__quote">
             <span>{COPY.intro.pullQuote}</span>
           </p>
-          <p>{COPY.intro.closing}</p>
+          <p>
+            <Phrased text={COPY.intro.closing} />
+          </p>
           <p className="intro__question">{COPY.intro.question}</p>
           <p className="intro__candidates">
+            <Phrased text={COPY.intro.candidates} />
             {/* No-break space: the parenthesis stays glued to "מכוניות המחץ". */}
-            {COPY.intro.candidates}
-            {'\u00A0'}
-            <span className="intro__aside">{COPY.intro.aside}</span>
+            {NBSP}
+            <span className="intro__aside">
+              <Phrased text={COPY.intro.aside} />
+            </span>
           </p>
         </article>
       </main>

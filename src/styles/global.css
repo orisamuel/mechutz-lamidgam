@@ -1325,3 +1325,29 @@ button {
   border-color: #1f8f4e;
   color: #146c3a;
 }
+
+/* ---------- Line breaking (phrases are joined in lib/phrasing.ts) ---------- */
+
+.question__prompt,
+.option__label,
+.result__party,
+.runner__name,
+.intro__lead,
+.intro__question,
+.loading__title,
+.prose h1 {
+  text-wrap: balance;
+}
+
+.intro__article p,
+.result__match,
+.result__body,
+.result__flavor,
+.prose p {
+  text-wrap: pretty;
+}
+
+/* Last resort only: a joined phrase is capped to fit the narrowest phone, so this should never fire. */
+.page {
+  overflow-wrap: break-word;
+}

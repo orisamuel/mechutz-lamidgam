@@ -9,7 +9,8 @@ import { siteUrl } from './lib/share';
 import { STORAGE_KEY } from './lib/storage';
 
 const progress = (n: number) => `שאלה ${n} מתוך ${QUESTIONS.length}`;
-const partyNames = new RegExp(`^(${PARTIES.map((p) => p.name).join('|')})$`);
+// Headings join phrases with no-break spaces (lib/phrasing.ts), so any whitespace counts as a space.
+const partyNames = new RegExp(`^(${PARTIES.map((p) => p.name.replace(/ /g, '\\s')).join('|')})$`);
 
 async function start(user: UserEvent) {
   await user.click(screen.getByRole('button', { name: /^מתחילים/ }));
@@ -81,12 +82,12 @@ describe('quiz flow', () => {
     await start(user);
     await answerCurrent(user);
     expect(screen.getByText(progress(2))).toBeInTheDocument();
-    await user.click(screen.getByRole('radio', { name: /מפעלים ממשלתיים/ }));
+    await user.click(screen.getByRole('radio', { name: /מפעלים\sממשלתיים/ }));
 
     unmount(); // "refresh": URL hash and localStorage stay
     render(<App />);
     expect(screen.getByText(progress(2))).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: /מפעלים ממשלתיים/ })).toBeChecked();
+    expect(screen.getByRole('radio', { name: /מפעלים\sממשלתיים/ })).toBeChecked();
   });
 
   it('browser back goes to the previous question', async () => {

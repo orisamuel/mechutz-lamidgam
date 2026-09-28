@@ -1,5 +1,6 @@
 import { COPY } from '../data/copy';
 import type { Party } from '../data/parties';
+import { plain } from './phrasing';
 import { PREVIEW } from './previewImage';
 
 /**
@@ -10,6 +11,7 @@ import { PREVIEW } from './previewImage';
 export function sharePageHtml(party: Party, site: string, noindex: boolean): string {
   const abs = (path: string) => (site ? `${site}${path}` : `../../${path}`);
   const title = COPY.share.title(party.name);
+  const description = plain(COPY.share.description);
   const alt = `${COPY.result.cardEyebrow}: ${party.name}`;
   return `<!doctype html>
 <html lang="he" dir="rtl">
@@ -17,12 +19,12 @@ export function sharePageHtml(party: Party, site: string, noindex: boolean): str
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${esc(title)} | ${esc(COPY.productName)}</title>
-    <meta name="description" content="${esc(COPY.share.description)}" />
+    <meta name="description" content="${esc(description)}" />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="he_IL" />
     <meta property="og:site_name" content="${esc(COPY.productName)}" />
     <meta property="og:title" content="${esc(title)}" />
-    <meta property="og:description" content="${esc(COPY.share.description)}" />
+    <meta property="og:description" content="${esc(description)}" />
     <meta property="og:url" content="${esc(abs(`r/${party.id}/`))}" />
     <meta property="og:image" content="${esc(abs(`og/${party.id}.jpg`))}" />
     <meta property="og:image:type" content="image/jpeg" />

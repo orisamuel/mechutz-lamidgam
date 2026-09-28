@@ -1,5 +1,6 @@
 import { AxisQuestion } from '../components/AxisQuestion';
 import { Masthead } from '../components/Masthead';
+import { Phrased } from '../components/Phrased';
 import { Progress } from '../components/Progress';
 import { QuestionCard } from '../components/QuestionCard';
 import { COPY } from '../data/copy';
@@ -31,7 +32,7 @@ export function Quiz({ question, index, total, answer, onAnswer, onNext, onBack,
         <div className="card question">
           <Progress current={index + 1} total={total} category={question.category} />
           <h1 id="page-title" className="question__prompt" tabIndex={-1}>
-            {question.prompt}
+            <Phrased text={question.prompt} max={14} />
           </h1>
 
           {question.kind === 'choice' ? (

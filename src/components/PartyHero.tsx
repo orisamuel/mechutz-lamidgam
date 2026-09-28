@@ -2,6 +2,7 @@ import { COPY } from '../data/copy';
 import type { Party } from '../data/parties';
 import { asset } from '../lib/assets';
 import { BallotSlip } from './BallotSlip';
+import { Phrased } from './Phrased';
 
 /** Portrait with the ballot slip on its corner, or — until a portrait exists — the slip on a compass grid. */
 export function PartyHero({ party }: { party: Party }) {
@@ -12,7 +13,9 @@ export function PartyHero({ party }: { party: Party }) {
         <figure className="hero__figure">
           <img src={asset(party.portrait)} alt={alt} width={640} height={800} />
           {party.portraitAnonymous ? (
-            <span className="hero__tag hero__tag--note">{COPY.result.noPhotoNote}</span>
+            <span className="hero__tag hero__tag--note">
+              <Phrased text={COPY.result.noPhotoNote} max={16} />
+            </span>
           ) : (
             <span className="hero__tag">{COPY.result.illustration}</span>
           )}

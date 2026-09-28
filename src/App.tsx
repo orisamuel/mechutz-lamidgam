@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react';
+import { Phrased } from './components/Phrased';
 import { Toast } from './components/Toast';
 import { COPY } from './data/copy';
 import { PARTIES, partyById } from './data/parties';
@@ -198,10 +199,18 @@ export default function App() {
         screen = (
           <TextPage title={COPY.methodology.title} onBack={() => back({ name: 'intro' })} onHome={goHome}>
             {COPY.methodology.paragraphs.map((p) => (
-              <p key={p}>{p}</p>
+              <p key={p}>
+                <Phrased text={p} max={24} />
+              </p>
             ))}
-            {PARTIES.some((p) => p.portrait) && <p>{COPY.methodology.portraits}</p>}
-            <p>{COPY.methodology.privacy}</p>
+            {PARTIES.some((p) => p.portrait) && (
+              <p>
+                <Phrased text={COPY.methodology.portraits} max={24} />
+              </p>
+            )}
+            <p>
+              <Phrased text={COPY.methodology.privacy} max={24} />
+            </p>
             <Sources />
           </TextPage>
         );

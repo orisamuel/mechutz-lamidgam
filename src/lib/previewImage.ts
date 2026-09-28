@@ -5,6 +5,7 @@
  */
 import { COPY } from '../data/copy';
 import type { Party } from '../data/parties';
+import { NBSP, phrase } from './phrasing';
 
 export const PREVIEW = { width: 1200, height: 630 } as const;
 
@@ -110,8 +111,9 @@ export function drawPartyPreview(ctx: CanvasRenderingContext2D, party: Party, po
   ctx.fillText(eyebrow, right, 276);
 
   // One line up to 96px; a name that needs two lines is set smaller, so it never crowds the call to action.
-  const oneLine = wrapToFit(ctx, party.name, serif, 900, 96, 64, textW, 1);
-  const name = oneLine.lines.length === 1 && oneLine.size >= 72 ? oneLine : wrapToFit(ctx, party.name, serif, 900, 80, 56, textW, 2);
+  const partyName = phrase(party.name, 14);
+  const oneLine = wrapToFit(ctx, partyName, serif, 900, 96, 64, textW, 1);
+  const name = oneLine.lines.length === 1 && oneLine.size >= 72 ? oneLine : wrapToFit(ctx, partyName, serif, 900, 80, 56, textW, 2);
   ctx.font = serif(900, name.size);
   ctx.fillStyle = C.ink;
   name.lines.forEach((l, i) => ctx.fillText(l, right, 290 + name.size * 1.02 + i * name.size * 1.08));
@@ -137,27 +139,29 @@ export function drawSitePreview(ctx: CanvasRenderingContext2D, parties: Party[])
   ctx.fillRect(0, 0, W, H);
 
   ctx.textAlign = 'center';
-  ctx.font = sans(800, 24);
+  ctx.font = sans(800, 22);
   ctx.fillStyle = C.ink;
-  ctx.fillText(`★  ${COPY.intro.edition}  ★`, cx, 68);
-  ctx.font = serif(900, 124);
-  ctx.fillText(COPY.productName, cx, 184);
-  ctx.fillRect(90, 208, W - 180, 5);
-  ctx.fillRect(90, 220, W - 180, 2);
-  ctx.font = sans(600, 26);
+  ctx.fillText(`★  ${COPY.intro.edition}  ★`, cx, 52);
+  ctx.font = serif(900, 104);
+  ctx.fillText(COPY.productName, cx, 150);
+  ctx.fillRect(90, 170, W - 180, 5);
+  ctx.fillRect(90, 182, W - 180, 2);
+  ctx.font = sans(600, 24);
   ctx.fillStyle = C.muted;
-  ctx.fillText(COPY.mastheadMeta, cx, 264);
+  ctx.fillText(COPY.mastheadMeta, cx, 220);
 
-  const promise = wrapToFit(ctx, COPY.share.description, sans, 800, 36, 30, W - 220, 2);
-  ctx.font = sans(800, promise.size);
+  // The promise, one phrase per line, as written in the copy: "…מה המפלגה הקטנה / (או אם תרצו, הבוטיקית) / …".
+  const promise = COPY.share.description.split('\n');
+  const size = fitFontSize(ctx, promise.reduce((a, b) => (b.length > a.length ? b : a)), sans, 800, W - 220, 34, 26);
+  ctx.font = sans(800, size);
   ctx.fillStyle = C.ink;
-  promise.lines.forEach((l, i) => ctx.fillText(l, cx, 322 + i * promise.size * 1.3));
+  promise.forEach((l, i) => ctx.fillText(l, cx, 272 + i * size * 1.28));
 
   // Fan of slips, first list on the right as on the intro page.
   const n = parties.length;
   parties.forEach((p, i) => {
     const offset = (n - 1) / 2 - i;
-    drawSlip(ctx, cx + offset * 128, 496 + Math.abs(offset) * 10, 118, -offset * 5, p.letters, p.officialName);
+    drawSlip(ctx, cx + offset * 128, 528 + Math.abs(offset) * 10, 110, -offset * 5, p.letters, p.officialName);
   });
   ctx.restore();
 }
@@ -192,7 +196,7 @@ function drawTag(ctx: CanvasRenderingContext2D, text: string, right: number, top
 
 /** The anonymous figure's strip: the same dark pill, full width, wrapping onto two lines if needed. */
 function drawNote(ctx: CanvasRenderingContext2D, text: string, x: number, top: number, width: number): void {
-  const block = wrapToFit(ctx, text, sans, 800, 24, 20, width - 36, 2);
+  const block = wrapToFit(ctx, phrase(text, 16), sans, 800, 24, 20, width - 36, 2);
   const lineH = block.size * 1.3;
   const h = lineH * block.lines.length + 22;
   ctx.save();
@@ -305,21 +309,41 @@ export function wrapToFit(
   return { size: minSize, lines: kept };
 }
 
+/**
+ * Greedy wrap that breaks only at ordinary spaces, so phrases joined with no-break spaces (phrase())
+ * stay whole; a phrase wider than the line falls back to its own words. Two-line results are then
+ * balanced, so the lines come out about the same length.
+ */
 export function wrap(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, fontSpec: string): string[] {
   ctx.font = fontSpec;
-  const words = text.split(/\s+/).filter(Boolean);
-  const lines: string[] = [];
-  let current = '';
-  for (const word of words) {
-    const candidate = current ? `${current} ${word}` : word;
-    if (ctx.measureText(candidate).width <= maxWidth || !current) current = candidate;
-    else {
-      lines.push(current);
-      current = word;
+  const units = text
+    .split(/ +/)
+    .filter(Boolean)
+    .flatMap((unit) => (ctx.measureText(unit).width <= maxWidth ? [unit] : unit.split(NBSP)));
+  const greedy = (width: number): string[] => {
+    const lines: string[] = [];
+    let current = '';
+    for (const unit of units) {
+      const candidate = current ? `${current} ${unit}` : unit;
+      if (ctx.measureText(candidate).width <= width || !current) current = candidate;
+      else {
+        lines.push(current);
+        current = unit;
+      }
     }
+    if (current) lines.push(current);
+    return lines;
+  };
+  const lines = greedy(maxWidth);
+  if (lines.length !== 2) return lines;
+  let lo = maxWidth / 2;
+  let hi = maxWidth;
+  for (let i = 0; i < 12; i++) {
+    const mid = (lo + hi) / 2;
+    if (greedy(mid).length <= 2) hi = mid;
+    else lo = mid;
   }
-  if (current) lines.push(current);
-  return lines;
+  return greedy(hi);
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {

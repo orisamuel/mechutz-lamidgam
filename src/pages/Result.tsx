@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { Footer } from '../components/Footer';
 import { Masthead } from '../components/Masthead';
 import { PartyHero } from '../components/PartyHero';
+import { Phrased } from '../components/Phrased';
 import { COPY } from '../data/copy';
 import type { Party } from '../data/parties';
 import { track } from '../lib/analytics';
@@ -60,7 +61,7 @@ export function Result(props: Props) {
           </p>
           <PartyHero party={party} />
           <h1 id="page-title" className="result__party" tabIndex={-1}>
-            {party.name}
+            <Phrased text={party.name} max={12} />
           </h1>
           <p className="result__leader">
             {party.leaderRole}: {party.leader}
@@ -95,7 +96,7 @@ export function Result(props: Props) {
                     <div className="runner__body">
                       <div className="runner__row">
                         <span className="runner__name">
-                          {p.name}
+                          <Phrased text={p.name} max={12} />
                           {p.letters && <span className="runner__letters">{p.letters}</span>}
                         </span>
                         <span className="runner__pct">{pct}%</span>
@@ -110,10 +111,22 @@ export function Result(props: Props) {
             </section>
           )}
 
-          <h2 className="result__title">{party.title}</h2>
-          {match && <p className="result__match">{match}</p>}
-          <p className="result__body">{body}</p>
-          {flavor && <p className="result__flavor">{flavor}</p>}
+          <h2 className="result__title">
+            <Phrased text={party.title} max={16} />
+          </h2>
+          {match && (
+            <p className="result__match">
+              <Phrased text={match} max={24} />
+            </p>
+          )}
+          <p className="result__body">
+            <Phrased text={body} max={24} />
+          </p>
+          {flavor && (
+            <p className="result__flavor">
+              <Phrased text={flavor} max={24} />
+            </p>
+          )}
 
           <div className="result__actions">
             <button

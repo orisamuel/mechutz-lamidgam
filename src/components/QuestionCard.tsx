@@ -1,4 +1,5 @@
 import type { ChoiceQuestion } from '../data/types';
+import { Phrased } from './Phrased';
 
 /** Answer markers read like ballot letters. */
 const MARKS = ['א', 'ב', 'ג', 'ד', 'ה', 'ו'];
@@ -27,7 +28,9 @@ export function QuestionCard({ question, selectedId, onSelect }: Props) {
             <span className="option__mark" aria-hidden="true">
               {MARKS[i]}
             </span>
-            <span className="option__label">{option.label}</span>
+            <span className="option__label">
+              <Phrased text={option.label} max={20} />
+            </span>
           </label>
         );
       })}
