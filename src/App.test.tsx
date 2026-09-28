@@ -149,7 +149,7 @@ describe('quiz flow', () => {
     expect(screen.getByText(progress(1))).toBeInTheDocument();
   });
 
-  it('shares a plain link to the party page: copied on a computer, no image download', async () => {
+  it('shares the fresh quiz: a share menu on a computer, no image download', async () => {
     const createObjectURL = vi.fn();
     Object.defineProperty(URL, 'createObjectURL', { value: createObjectURL, configurable: true });
 
@@ -157,10 +157,24 @@ describe('quiz flow', () => {
     render(<App />);
     await start(user);
     for (let i = 0; i < QUESTIONS.length; i++) await answerCurrent(user);
-    await user.click(await screen.findByRole('button', { name: 'שתפו את התוצאה' }));
+    const shareButton = await screen.findByRole('button', { name: 'שתפו את התוצאה' });
+    expect(shareButton).toHaveAttribute('aria-expanded', 'false');
+    await user.click(shareButton);
 
-    const copied = await navigator.clipboard.readText();
-    expect(copied).toMatch(/^יצא לי שרשר, \d{2}%\. בעד הרחבת סל התרופות וכתר לנשיא טראמפ\.\n.+\/r\/sharsher\/$/);
+    // No native share sheet here (a computer), so the menu opens.
+    expect(shareButton).toHaveAttribute('aria-expanded', 'true');
+    const menu = screen.getByRole('group', { name: COPY.share.menuLabel });
+    const whatsapp = within(menu).getByRole('link', { name: COPY.share.targets.whatsapp });
+    const message = decodeURIComponent(whatsapp.getAttribute('href')!.replace('https://wa.me/?text=', ''));
+    const [text, link] = message.split('\n');
+    expect(text).toBe('יצא לי שרשר. ומה יוצא לכם?');
+    // The link is the quiz itself, not a result page.
+    expect(link).toBe(window.location.origin + window.location.pathname);
+    expect(link).not.toContain('/r/');
+    expect(within(menu).getAllByRole('link')).toHaveLength(5);
+
+    await user.click(within(menu).getByRole('button', { name: COPY.share.copyLink }));
+    expect(await navigator.clipboard.readText()).toBe(link);
     expect(await screen.findByText(COPY.toast.copied)).toBeInTheDocument();
     expect(createObjectURL).not.toHaveBeenCalled();
   });

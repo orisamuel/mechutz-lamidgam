@@ -57,9 +57,3 @@ export function joinHebrew(items: string[]): string {
 export function matchSentence(partyName: string, stances: string[]): string | null {
   return stances.length ? `כמו ${partyName}, גם אתם בעד ${joinHebrew(stances)}.` : null;
 }
-
-/** "יצא לי גן עדן, 91%. בעד שמיטת חובות ותקרת שכר לבכירים." The link is shared next to it, not inside. */
-export function shareText(partyName: string, percent: number, stances: string[]): string {
-  const top = stances.slice(0, 2);
-  return top.length ? `יצא לי ${partyName}, ${percent}%. בעד ${joinHebrew(top)}.` : `יצא לי ${partyName}, ${percent}%.`;
-}

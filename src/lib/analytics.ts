@@ -1,4 +1,4 @@
-export type AnalyticsEvent = 'quiz_start' | 'quiz_complete' | 'share' | 'share_story' | 'map_view' | 'retake';
+export type AnalyticsEvent = 'quiz_start' | 'quiz_complete' | 'share' | 'share_target' | 'retake';
 
 /**
  * No-op until an analytics provider is chosen (cookieless, e.g. Cloudflare Web Analytics or

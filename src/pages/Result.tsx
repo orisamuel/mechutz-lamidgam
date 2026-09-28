@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { Footer } from '../components/Footer';
 import { Masthead } from '../components/Masthead';
 import { PartyHero } from '../components/PartyHero';
@@ -6,7 +6,7 @@ import { COPY } from '../data/copy';
 import type { Party } from '../data/parties';
 import { track } from '../lib/analytics';
 import { asset } from '../lib/assets';
-import { displayUrl, shareLink } from '../lib/share';
+import { canUseNativeShare, copyText, nativeShare, shareTargets } from '../lib/share';
 
 export interface RunnerUp {
   party: Party;
@@ -21,9 +21,9 @@ interface Props {
   match: string | null;
   /** A true detail about the party, when it applies. */
   flavor: string | null;
-  /** "יצא לי …, 91%. בעד …" — the link goes separately, so messengers build its preview. */
+  /** "יצא לי גן עדן. ומה יוצא לכם?" — the link travels separately, so messengers build its preview. */
   shareText: string;
-  /** The party's share page (/r/<slug>/), whose preview shows the party's image. */
+  /** The quiz itself, fresh: whoever opens it starts from the beginning. */
   shareUrl: string;
   runnersUp: RunnerUp[];
   onRetake: () => void;
@@ -35,13 +35,20 @@ interface Props {
 export function Result(props: Props) {
   const { party, percent, body, match, flavor, shareText, shareUrl, runnersUp, onToast } = props;
 
-  // Called straight from the click: iOS Safari rejects share() once the user gesture has gone stale.
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // Phones: the native share sheet, straight from the click (iOS rejects share() once the gesture is stale).
+  // Computers, or if the sheet can't open: our own menu.
   const share = useCallback(async () => {
     track('share', { party: party.id });
-    const outcome = await shareLink(shareText, shareUrl);
-    if (outcome === 'copied') onToast(COPY.toast.copied);
-    else if (outcome === 'failed') onToast(COPY.toast.failed(displayUrl(shareUrl)));
-  }, [party.id, shareText, shareUrl, onToast]);
+    if (canUseNativeShare() && (await nativeShare(shareText, shareUrl)) !== 'unavailable') return;
+    setMenuOpen((open) => !open);
+  }, [party.id, shareText, shareUrl]);
+
+  const copyLink = useCallback(async () => {
+    track('share_target', { target: 'copy' });
+    onToast((await copyText(shareUrl)) ? COPY.toast.copied : COPY.toast.failed(shareUrl));
+  }, [shareUrl, onToast]);
 
   return (
     <div className="page">
@@ -109,9 +116,34 @@ export function Result(props: Props) {
           {flavor && <p className="result__flavor">{flavor}</p>}
 
           <div className="result__actions">
-            <button type="button" className="btn btn--primary btn--block btn--lg" onClick={() => void share()}>
+            <button
+              type="button"
+              className="btn btn--primary btn--block btn--lg"
+              aria-expanded={menuOpen}
+              aria-controls="share-menu"
+              onClick={() => void share()}
+            >
               {COPY.result.share}
             </button>
+            {menuOpen && (
+              <div id="share-menu" className="share-menu" role="group" aria-label={COPY.share.menuLabel}>
+                {shareTargets(shareText, shareUrl).map((t) => (
+                  <a
+                    key={t.id}
+                    className={`share-menu__item share-menu__item--${t.id}`}
+                    href={t.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => track('share_target', { target: t.id })}
+                  >
+                    {t.label}
+                  </a>
+                ))}
+                <button type="button" className="share-menu__item" onClick={() => void copyLink()}>
+                  {COPY.share.copyLink}
+                </button>
+              </div>
+            )}
             {party.website && (
               <a className="btn btn--secondary btn--block" href={party.website.url} target="_blank" rel="noopener noreferrer">
                 {party.website.kind === 'platform' ? COPY.result.platformLink : COPY.result.profileLink}

@@ -1,4 +1,4 @@
-import type { PartyId } from '../data/partyIds';
+import { COPY } from '../data/copy';
 
 /** Canonical site URL: VITE_SITE_URL when configured (custom domain), otherwise where we run. */
 export function siteUrl(): string {
@@ -8,41 +8,51 @@ export function siteUrl(): string {
   return `${origin}${pathname.replace(/index\.html$/, '')}`;
 }
 
-/** The party's share page. Its Open Graph tags give chats a preview with the party's image (see sharePages.ts). */
-export function resultUrl(party: PartyId): string {
-  return `${siteUrl()}r/${party}/`;
-}
-
-/** "https://example.co.il/r/x/" → "example.co.il/r/x" — for showing a link as text. */
+/** "https://example.co.il/" → "example.co.il" — for showing a link as text. */
 export function displayUrl(url: string): string {
   return url.replace(/^https?:\/\//, '').replace(/\/+$/, '');
 }
 
-export type ShareOutcome = 'shared' | 'cancelled' | 'copied' | 'failed';
-
 /**
- * Phones: the native share sheet with the text and the link (WhatsApp and friends turn the link into a
- * preview with the image). Everything else: copy both to the clipboard. No files, no downloads.
+ * Phones and tablets get their own share sheet (every app they have, one tap). Desktop share dialogs
+ * (Windows, macOS) are clunky and often miss WhatsApp, so computers get our share menu instead.
  */
-export async function shareLink(text: string, url: string): Promise<ShareOutcome> {
-  if (typeof navigator.share === 'function' && isTouchDevice()) {
-    try {
-      await navigator.share({ text, url });
-      return 'shared';
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return 'cancelled';
-    }
-  }
-  return (await copyText(`${text}\n${url}`)) ? 'copied' : 'failed';
-}
-
-/** Desktop share dialogs (Windows, macOS) are clunkier than a copied link, so only phones and tablets get them. */
-function isTouchDevice(): boolean {
+export function canUseNativeShare(): boolean {
+  if (typeof navigator.share !== 'function') return false;
   try {
     return window.matchMedia('(pointer: coarse)').matches;
   } catch {
     return false;
   }
+}
+
+/** 'shared', 'cancelled', or 'unavailable' when the sheet could not open (fall back to the menu). */
+export async function nativeShare(text: string, url: string): Promise<'shared' | 'cancelled' | 'unavailable'> {
+  try {
+    await navigator.share({ text, url });
+    return 'shared';
+  } catch (err) {
+    return err instanceof DOMException && err.name === 'AbortError' ? 'cancelled' : 'unavailable';
+  }
+}
+
+export interface ShareTarget {
+  id: 'whatsapp' | 'facebook' | 'telegram' | 'x' | 'email';
+  label: string;
+  href: string;
+}
+
+/** The share menu's links. Each one opens the service's own share screen with the text and the link filled in. */
+export function shareTargets(text: string, url: string): ShareTarget[] {
+  const message = `${text}\n${url}`;
+  const e = encodeURIComponent;
+  return [
+    { id: 'whatsapp', label: COPY.share.targets.whatsapp, href: `https://wa.me/?text=${e(message)}` },
+    { id: 'facebook', label: COPY.share.targets.facebook, href: `https://www.facebook.com/sharer/sharer.php?u=${e(url)}` },
+    { id: 'telegram', label: COPY.share.targets.telegram, href: `https://t.me/share/url?url=${e(url)}&text=${e(text)}` },
+    { id: 'x', label: COPY.share.targets.x, href: `https://twitter.com/intent/tweet?text=${e(text)}&url=${e(url)}` },
+    { id: 'email', label: COPY.share.targets.email, href: `mailto:?subject=${e(COPY.productName)}&body=${e(message)}` },
+  ];
 }
 
 export async function copyText(text: string): Promise<boolean> {

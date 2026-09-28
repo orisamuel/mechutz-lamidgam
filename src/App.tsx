@@ -5,11 +5,11 @@ import { PARTIES, partyById } from './data/parties';
 import { QUESTIONS, QUESTION_COUNT } from './data/questions';
 import type { Answer, Answers } from './data/types';
 import { track } from './lib/analytics';
-import { matchSentence, sharedStances, shareText } from './lib/identity';
+import { matchSentence, sharedStances } from './lib/identity';
 import { flavorLine, pickBody } from './lib/microcopy';
 import { parseHash, routeToHash, sameRoute, type Route } from './lib/router';
 import { computeResult, topMatches } from './lib/score';
-import { resultUrl } from './lib/share';
+import { siteUrl } from './lib/share';
 import { clearState, loadState, saveState } from './lib/storage';
 import { Intro } from './pages/Intro';
 import { Loading } from './pages/Loading';
@@ -183,8 +183,8 @@ export default function App() {
             body={pickBody(party, answers)}
             match={matchSentence(party.shortName, stances)}
             flavor={result.answeredIds.length === 0 ? COPY.result.noOpinion : flavorLine(party, answers)}
-            shareText={shareText(party.shortName, result.percent, stances)}
-            shareUrl={resultUrl(party.id)}
+            shareText={COPY.share.message(party.shortName)}
+            shareUrl={siteUrl()}
             runnersUp={runnersUp}
             onRetake={restart}
             onMethodology={goMethodology}

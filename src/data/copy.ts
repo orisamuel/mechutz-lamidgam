@@ -54,8 +54,13 @@ export const COPY = {
     copied: 'הקישור הועתק. אפשר להדביק ולשתף.',
     failed: (link: string) => `לא הצלחנו להעתיק. זה הקישור: ${link}`,
   },
-  /** Shared result links (/r/<slug>/) and their preview images. */
   share: {
+    /** What a share says. The link (the quiz itself) goes next to it, and the chat shows its preview image. */
+    message: (party: string) => `יצא לי ${party}. ומה יוצא לכם?`,
+    menuLabel: 'שיתוף',
+    targets: { whatsapp: 'וואטסאפ', facebook: 'פייסבוק', telegram: 'טלגרם', x: 'X', email: 'מייל' },
+    copyLink: 'העתקת הקישור',
+    /** The per-party pages /r/<slug>/ (older shared links) and their preview images. */
     title: (party: string) => `יצא לי: ${party}`,
     description: 'השאלון שיגיד לכם מה המפלגה הקטנה (או אם תרצו, הבוטיקית) שהכי קרובה לדעותיכם.',
     cta: 'ומה יוצא לכם?',

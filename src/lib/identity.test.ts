@@ -3,7 +3,7 @@ import { bandIndex } from '../data/axes';
 import { PARTIES, partyById } from '../data/parties';
 import { QUESTIONS } from '../data/questions';
 import type { Answers } from '../data/types';
-import { joinHebrew, matchSentence, sharedStances, shareText, stanceOf } from './identity';
+import { joinHebrew, matchSentence, sharedStances, stanceOf } from './identity';
 import { flavorLine } from './microcopy';
 
 const byId = (id: string) => QUESTIONS.find((q) => q.id === id)!;
@@ -70,14 +70,12 @@ describe('stances', () => {
     expect(joinHebrew(['א', '11 שרים'])).toBe('א ו־11 שרים');
   });
 
-  it('builds the match line and the share text', () => {
+  it('builds the match line', () => {
     const stances = sharedStances(QUESTIONS, answers, 'gan-eden');
     expect(matchSentence('גן עדן', stances)).toBe(
       'כמו גן עדן, גם אתם בעד ראש ממשלה שהוא גם שר האוצר, שמיטת חובות לאומית ותוכנית לאומית לריפוי טראומה.',
     );
     expect(matchSentence('גן עדן', [])).toBeNull();
-    expect(shareText('גן עדן', 91, stances)).toBe('יצא לי גן עדן, 91%. בעד ראש ממשלה שהוא גם שר האוצר ושמיטת חובות לאומית.');
-    expect(shareText('גן עדן', 91, [])).toBe('יצא לי גן עדן, 91%.');
   });
 });
 

@@ -1290,3 +1290,38 @@ button {
   text-underline-offset: 3px;
   overflow-wrap: anywhere;
 }
+
+/* ---------- Share menu (computers; phones get their own share sheet) ---------- */
+
+.share-menu {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.share-menu__item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1.5px solid var(--ink);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.share-menu__item:hover {
+  background: var(--paper-2);
+}
+
+.share-menu__item--whatsapp {
+  border-color: #1f8f4e;
+  color: #146c3a;
+}
