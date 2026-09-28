@@ -53,11 +53,11 @@ public/        favicon.svg · party-leaders/ (6 דיוקנאות מאוירים)
 
 - **איך זה עולה:** כל push ל-`main` מריץ בדיקות ו-build, ומעלה ל-GitHub Pages (`.github/workflows/deploy.yml`).
 - **כתובת האתר:** נקבעת ב-`VITE_SITE_URL` (כרגע `https://lo-ovrot.fun/`).
-- **noindex:** `VITE_NOINDEX=1` מוסיף `noindex`. להסיר ביום ההשקה.
+- **noindex:** הוסר ב-28.09.2026. לבנייה של סביבת בדיקות אפשר להגדיר `VITE_NOINDEX=1`, וזה מוסיף `noindex`.
 
 ## לפני השקה
 
 - [ ] לאמת אותיות, שמות וראשי רשימות מול ועדת הבחירות (ב-`parties.ts` יש TODO).
 - [ ] לבדוק על אייפון אמיתי: שיתוף (חלונית השיתוף ותצוגה מקדימה בוואטסאפ), סליידר, swipe-back.
 - [ ] לבחור ספק analytics (`src/lib/analytics.ts`), cookieless, בלי לשלוח תשובות.
-- [ ] להסיר את `VITE_NOINDEX`.
+- [x] להסיר את `VITE_NOINDEX` (הוסר ב-28.09.2026, האתר פתוח למנועי חיפוש).

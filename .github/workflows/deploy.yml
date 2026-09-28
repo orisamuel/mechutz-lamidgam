@@ -19,8 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       VITE_SITE_URL: https://lo-ovrot.fun/
-      # Staging: keep search engines out until launch day. Remove this line to launch.
-      VITE_NOINDEX: '1'
+      # Launched 28.09.2026. For a staging build, add VITE_NOINDEX: '1' (adds robots noindex).
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
