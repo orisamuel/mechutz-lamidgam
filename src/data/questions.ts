@@ -56,7 +56,7 @@ const BANK: Question[] = [
     kind: 'choice',
     category: 'כלכלה',
     topic: 'יוקר המחיה',
-    prompt: 'מה יוריד את יוקר המחיה?',
+    prompt: 'כיצד צריך להילחם ביוקר המחיה?',
     options: [
       {
         id: 'a',
@@ -148,7 +148,7 @@ const BANK: Question[] = [
     options: [
       {
         id: 'a',
-        label: 'להגיע לבית הלבן ולהעניד לנשיא טראמפ כתר',
+        label: 'להגיע לבית הלבן ולהעניק לנשיא טראמפ כתר',
         weights: { [SHR]: 3 },
         basis: ['sharsher/crown-trump'],
         stance: 'כתר לנשיא טראמפ',

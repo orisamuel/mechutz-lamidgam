@@ -137,7 +137,7 @@ export const PARTIES: Party[] = [
       'בהצהרות של שרשר: להיות הפה של הלומי הקרב, של ניצולי השואה ושל ילדים שסובלים מחרם. ומי שלומד תורה, שימשיך ללמוד.',
     ],
     flavor: {
-      text: 'שרשר גם הבטיח להגיע לבית הלבן ולהעניד לטראמפ את הכתר שלו.',
+      text: 'שרשר גם הבטיח להגיע לבית הלבן ולהעניק לטראמפ את הכתר שלו.',
       when: [{ type: 'always' }],
     },
     basis: ['sharsher/vision', 'sharsher/drug-basket', 'sharsher/boycotts', 'sharsher/pm-netanyahu', 'sharsher/trauma', 'sharsher/draft', 'sharsher/crown-trump'],
