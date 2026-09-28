@@ -1,3 +1,5 @@
+import type { PartyId } from '../data/partyIds';
+
 /** Canonical site URL: VITE_SITE_URL when configured (custom domain), otherwise where we run. */
 export function siteUrl(): string {
   const configured = import.meta.env.VITE_SITE_URL as string | undefined;
@@ -6,42 +8,41 @@ export function siteUrl(): string {
   return `${origin}${pathname.replace(/index\.html$/, '')}`;
 }
 
-/** "https://example.co.il/" → "example.co.il" — for printing on the card. */
+/** The party's share page. Its Open Graph tags give chats a preview with the party's image (see sharePages.ts). */
+export function resultUrl(party: PartyId): string {
+  return `${siteUrl()}r/${party}/`;
+}
+
+/** "https://example.co.il/r/x/" → "example.co.il/r/x" — for showing a link as text. */
 export function displayUrl(url: string): string {
   return url.replace(/^https?:\/\//, '').replace(/\/+$/, '');
 }
 
-export type ShareOutcome = 'shared' | 'cancelled' | 'downloaded';
+export type ShareOutcome = 'shared' | 'cancelled' | 'copied' | 'failed';
 
 /**
- * Native share sheet with the image (WhatsApp, Instagram…). Falls back to downloading the
- * image and copying the text. Call it straight from the click handler with a ready blob:
- * iOS Safari rejects share() if the user gesture has gone stale.
+ * Phones: the native share sheet with the text and the link (WhatsApp and friends turn the link into a
+ * preview with the image). Everything else: copy both to the clipboard. No files, no downloads.
  */
-export async function shareImage(blob: Blob, text: string, filename: string): Promise<ShareOutcome> {
-  const file = new File([blob], filename, { type: 'image/png' });
-  if (typeof navigator.share === 'function' && navigator.canShare?.({ files: [file] })) {
+export async function shareLink(text: string, url: string): Promise<ShareOutcome> {
+  if (typeof navigator.share === 'function' && isTouchDevice()) {
     try {
-      await navigator.share({ files: [file], text });
+      await navigator.share({ text, url });
       return 'shared';
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return 'cancelled';
     }
   }
-  downloadBlob(blob, filename);
-  await copyText(text);
-  return 'downloaded';
+  return (await copyText(`${text}\n${url}`)) ? 'copied' : 'failed';
 }
 
-export function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+/** Desktop share dialogs (Windows, macOS) are clunkier than a copied link, so only phones and tablets get them. */
+function isTouchDevice(): boolean {
+  try {
+    return window.matchMedia('(pointer: coarse)').matches;
+  } catch {
+    return false;
+  }
 }
 
 export async function copyText(text: string): Promise<boolean> {

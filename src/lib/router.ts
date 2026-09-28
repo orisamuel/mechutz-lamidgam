@@ -4,7 +4,6 @@ import { QUESTION_COUNT } from '../data/questions';
 export type Route =
   | { name: 'intro' }
   | { name: 'question'; index: number }
-  | { name: 'priorities' }
   | { name: 'result' }
   | { name: 'methodology' };
 
@@ -17,8 +16,6 @@ export function parseHash(hash: string): Route {
     return { name: 'intro' };
   }
   switch (path) {
-    case '/priorities':
-      return { name: 'priorities' };
     case '/result':
       return { name: 'result' };
     case '/methodology':
@@ -34,8 +31,6 @@ export function routeToHash(route: Route): string {
       return '#/';
     case 'question':
       return `#/q/${route.index + 1}`;
-    case 'priorities':
-      return '#/priorities';
     case 'result':
       return '#/result';
     case 'methodology':

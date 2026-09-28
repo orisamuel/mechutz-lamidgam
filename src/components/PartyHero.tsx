@@ -11,7 +11,11 @@ export function PartyHero({ party }: { party: Party }) {
       <div className="hero hero--portrait">
         <figure className="hero__figure">
           <img src={asset(party.portrait)} alt={alt} width={640} height={800} />
-          <span className="hero__tag">{COPY.result.illustration}</span>
+          {party.portraitAnonymous ? (
+            <span className="hero__tag hero__tag--note">{COPY.result.noPhotoNote}</span>
+          ) : (
+            <span className="hero__tag">{COPY.result.illustration}</span>
+          )}
         </figure>
         <BallotSlip letters={party.letters} name={party.officialName} size="small" />
       </div>

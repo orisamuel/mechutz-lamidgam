@@ -5,15 +5,14 @@ import { PARTIES, partyById } from './data/parties';
 import { QUESTIONS, QUESTION_COUNT } from './data/questions';
 import type { Answer, Answers } from './data/types';
 import { track } from './lib/analytics';
-import { cardStances, matchSentence, sharedStances, shareText } from './lib/identity';
+import { matchSentence, sharedStances, shareText } from './lib/identity';
 import { flavorLine, pickBody } from './lib/microcopy';
 import { parseHash, routeToHash, sameRoute, type Route } from './lib/router';
-import { computeResult, isAnswered, topMatches } from './lib/score';
-import { displayUrl, siteUrl } from './lib/share';
+import { computeResult, topMatches } from './lib/score';
+import { resultUrl } from './lib/share';
 import { clearState, loadState, saveState } from './lib/storage';
 import { Intro } from './pages/Intro';
 import { Loading } from './pages/Loading';
-import { Priorities } from './pages/Priorities';
 import { Quiz } from './pages/Quiz';
 import { Result } from './pages/Result';
 import { Sources } from './pages/Sources';
@@ -21,25 +20,20 @@ import { TextPage } from './pages/TextPage';
 
 const LOADING_MS = import.meta.env.MODE === 'test' ? 0 : prefersReducedMotion() ? 600 : 1100;
 
-/** "בחרו עד שני נושאים" — the importance step caps how many issues count double. */
-const MAX_PRIORITIES = 2;
 /** An untouched slider answered with "המשך" means exactly the middle. */
 const AXIS_DEFAULT = 50;
 
 export default function App() {
-  const [initial] = useState(() => loadState(QUESTIONS));
-  const [answers, setAnswers] = useState<Answers>(initial.answers);
-  const [priorities, setPriorities] = useState<string[]>(initial.priorities);
+  const [answers, setAnswers] = useState<Answers>(() => loadState(QUESTIONS));
   const [route, setRoute] = useState<Route>(() => parseHash(window.location.hash));
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
-  const result = useMemo(() => computeResult(QUESTIONS, answers, priorities), [answers, priorities]);
+  const result = useMemo(() => computeResult(QUESTIONS, answers), [answers]);
   const firstUnvisited = QUESTIONS.findIndex((q) => answers[q.id] === undefined);
   const allVisited = firstUnvisited === -1;
-  const answeredQuestions = QUESTIONS.filter((q) => isAnswered(answers[q.id]));
 
-  useEffect(() => saveState(answers, priorities), [answers, priorities]);
+  useEffect(() => saveState(answers), [answers]);
 
   // Browser back/forward and manual hash edits.
   useEffect(() => {
@@ -75,9 +69,7 @@ export default function App() {
       const reachable = allVisited ? QUESTION_COUNT - 1 : firstUnvisited;
       return route.index > reachable ? { name: 'question', index: reachable } : route;
     }
-    if ((route.name === 'result' || route.name === 'priorities') && !allVisited) {
-      return { name: 'question', index: firstUnvisited };
-    }
+    if (route.name === 'result' && !allVisited) return { name: 'question', index: firstUnvisited };
     return route;
   }, [route, allVisited, firstUnvisited]);
 
@@ -92,10 +84,10 @@ export default function App() {
     document.getElementById('page-title')?.focus({ preventScroll: true });
   }, [screenKey]);
 
-  /** The short "placing you on the map" beat, then the result. */
+  /** After the last question: the short "placing you on the map" beat, then the result. */
   const showResult = useCallback(
-    (current: Answers, chosen: string[]) => {
-      track('quiz_complete', { party: computeResult(QUESTIONS, current, chosen).winner });
+    (current: Answers) => {
+      track('quiz_complete', { party: computeResult(QUESTIONS, current).winner });
       setLoading(true);
       window.setTimeout(() => {
         setLoading(false);
@@ -105,21 +97,12 @@ export default function App() {
     [navigate],
   );
 
-  /** After the last question: the weighting step, unless there is nothing to weigh. */
-  const finish = useCallback(
-    (current: Answers) => {
-      if (QUESTIONS.some((q) => isAnswered(current[q.id]))) navigate({ name: 'priorities' });
-      else showResult(current, []);
-    },
-    [navigate, showResult],
-  );
-
   const advance = useCallback(
     (from: number, current: Answers) => {
       if (from < QUESTION_COUNT - 1) navigate({ name: 'question', index: from + 1 });
-      else finish(current);
+      else showResult(current);
     },
-    [finish, navigate],
+    [showResult, navigate],
   );
 
   const setAnswer = (questionId: string, answer: Answer) => setAnswers((prev) => ({ ...prev, [questionId]: answer }));
@@ -127,7 +110,6 @@ export default function App() {
   const restart = () => {
     clearState();
     setAnswers({});
-    setPriorities([]);
     track('retake');
     navigate({ name: 'question', index: 0 });
   };
@@ -136,11 +118,7 @@ export default function App() {
   const goMethodology = () => navigate({ name: 'methodology' });
   const clearToast = useCallback(() => setToast(null), []);
 
-  const stances = useMemo(
-    () => sharedStances(QUESTIONS, answers, result.winner, priorities),
-    [answers, result.winner, priorities],
-  );
-  const url = siteUrl();
+  const stances = useMemo(() => sharedStances(QUESTIONS, answers, result.winner), [answers, result.winner]);
 
   let screen: ReactElement;
   if (loading) {
@@ -193,26 +171,6 @@ export default function App() {
         );
         break;
       }
-      case 'priorities':
-        screen = (
-          <Priorities
-            questions={answeredQuestions}
-            selected={priorities}
-            max={MAX_PRIORITIES}
-            onToggle={(id) =>
-              setPriorities((prev) =>
-                prev.includes(id) ? prev.filter((p) => p !== id) : prev.length < MAX_PRIORITIES ? [...prev, id] : prev,
-              )
-            }
-            onContinue={() => showResult(answers, priorities)}
-            onSkip={() => {
-              setPriorities([]);
-              showResult(answers, []);
-            }}
-            onHome={goHome}
-          />
-        );
-        break;
       case 'result': {
         const party = partyById(result.winner);
         const runnersUp = topMatches(result)
@@ -225,9 +183,8 @@ export default function App() {
             body={pickBody(party, answers)}
             match={matchSentence(party.shortName, stances)}
             flavor={result.answeredIds.length === 0 ? COPY.result.noOpinion : flavorLine(party, answers)}
-            identity={cardStances(stances)}
-            shareText={shareText(party.shortName, result.percent, stances, url)}
-            displayUrl={displayUrl(url)}
+            shareText={shareText(party.shortName, result.percent, stances)}
+            shareUrl={resultUrl(party.id)}
             runnersUp={runnersUp}
             onRetake={restart}
             onMethodology={goMethodology}

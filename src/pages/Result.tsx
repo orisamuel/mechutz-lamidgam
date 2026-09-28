@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
 import { Footer } from '../components/Footer';
 import { Masthead } from '../components/Masthead';
 import { PartyHero } from '../components/PartyHero';
@@ -6,8 +6,7 @@ import { COPY } from '../data/copy';
 import type { Party } from '../data/parties';
 import { track } from '../lib/analytics';
 import { asset } from '../lib/assets';
-import { loadImage, renderCardBlob, type CardData, type CardFormat } from '../lib/cardRenderer';
-import { shareImage } from '../lib/share';
+import { displayUrl, shareLink } from '../lib/share';
 
 export interface RunnerUp {
   party: Party;
@@ -22,10 +21,10 @@ interface Props {
   match: string | null;
   /** A true detail about the party, when it applies. */
   flavor: string | null;
-  /** The shared stances, as printed on the share card. */
-  identity: string;
+  /** "יצא לי …, 91%. בעד …" — the link goes separately, so messengers build its preview. */
   shareText: string;
-  displayUrl: string;
+  /** The party's share page (/r/<slug>/), whose preview shows the party's image. */
+  shareUrl: string;
   runnersUp: RunnerUp[];
   onRetake: () => void;
   onMethodology: () => void;
@@ -33,52 +32,16 @@ interface Props {
   onToast: (message: string) => void;
 }
 
-type Blobs = Partial<Record<CardFormat, Blob>>;
-
 export function Result(props: Props) {
-  const { party, percent, body, match, flavor, identity, shareText, displayUrl, runnersUp, onToast } = props;
-  const [blobs, setBlobs] = useState<Blobs>({});
-  const runnersKey = runnersUp.map((r) => `${r.party.id}:${r.percent}`).join('|');
+  const { party, percent, body, match, flavor, shareText, shareUrl, runnersUp, onToast } = props;
 
-  // Pre-render both cards so share() runs inside the click gesture (iOS Safari requirement).
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const portrait = party.portrait ? await loadImage(asset(party.portrait)) : null;
-      const data: CardData = {
-        partyName: party.name,
-        officialName: party.officialName,
-        letters: party.letters,
-        percent,
-        identity,
-        url: displayUrl,
-        portrait,
-        disclosure: portrait ? (party.portraitAnonymous ? COPY.result.anonymousDisclosure : COPY.result.aiDisclosure) : null,
-        // Short names: a runner-up row has room for about 20 characters.
-        runnersUp: runnersUp.map((r) => ({ name: r.party.shortName, letters: r.party.letters, percent: r.percent })),
-      };
-      const [post, story] = await Promise.all([renderCardBlob(data, 'post'), renderCardBlob(data, 'story')]);
-      if (!cancelled) setBlobs({ post: post ?? undefined, story: story ?? undefined });
-    })().catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-    // runnersKey stands in for runnersUp, which is a fresh array on every render.
-  }, [party, percent, identity, displayUrl, runnersKey]);
-
-  const share = useCallback(
-    async (format: CardFormat) => {
-      const blob = blobs[format];
-      if (!blob) {
-        onToast(COPY.toast.failed);
-        return;
-      }
-      track(format === 'story' ? 'share_story' : 'share', { party: party.id });
-      const outcome = await shareImage(blob, shareText, `mechutz-lamidgam-${party.id}${format === 'story' ? '-story' : ''}.png`);
-      if (outcome === 'downloaded') onToast(COPY.toast.downloaded);
-    },
-    [blobs, shareText, party.id, onToast],
-  );
+  // Called straight from the click: iOS Safari rejects share() once the user gesture has gone stale.
+  const share = useCallback(async () => {
+    track('share', { party: party.id });
+    const outcome = await shareLink(shareText, shareUrl);
+    if (outcome === 'copied') onToast(COPY.toast.copied);
+    else if (outcome === 'failed') onToast(COPY.toast.failed(displayUrl(shareUrl)));
+  }, [party.id, shareText, shareUrl, onToast]);
 
   return (
     <div className="page">
@@ -89,11 +52,6 @@ export function Result(props: Props) {
             <span>{COPY.result.eyebrow}</span>
           </p>
           <PartyHero party={party} />
-          {party.portrait && (
-            <p className="result__disclosure">
-              {party.portraitAnonymous ? COPY.result.anonymousDisclosure : COPY.result.aiDisclosure}
-            </p>
-          )}
           <h1 id="page-title" className="result__party" tabIndex={-1}>
             {party.name}
           </h1>
@@ -151,7 +109,7 @@ export function Result(props: Props) {
           {flavor && <p className="result__flavor">{flavor}</p>}
 
           <div className="result__actions">
-            <button type="button" className="btn btn--primary btn--block btn--lg" onClick={() => void share('post')}>
+            <button type="button" className="btn btn--primary btn--block btn--lg" onClick={() => void share()}>
               {COPY.result.share}
             </button>
             {party.website && (
@@ -159,9 +117,6 @@ export function Result(props: Props) {
                 {party.website.kind === 'platform' ? COPY.result.platformLink : COPY.result.profileLink}
               </a>
             )}
-            <button type="button" className="link-button" onClick={() => void share('story')}>
-              {COPY.result.shareStory}
-            </button>
           </div>
         </article>
 

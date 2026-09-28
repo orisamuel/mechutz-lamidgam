@@ -101,8 +101,8 @@ export function simulate(
   let withResult = 0;
   for (let i = 0; i < runs; i++) {
     const answers = randomAnswers(questions, rand, options);
-    // Some respondents mark a few issues as extra important in the weighting step.
-    const priorities = questions.filter(() => rand() < (options.priorityRate ?? 0.15)).map((q) => q.id);
+    // The weighting step is gone from the UI (28.09); priorityRate > 0 still models it for experiments.
+    const priorities = questions.filter(() => rand() < (options.priorityRate ?? 0)).map((q) => q.id);
     const result = computeResult(questions, answers, priorities);
     if (!result) continue;
     withResult++;

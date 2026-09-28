@@ -27,21 +27,24 @@ src/
   data/        questions.ts (12 השאלות + מטריצה) · parties.ts · axes.ts · copy.ts · archetypes.ts
   lib/         score.ts · identity.ts · microcopy.ts · cardRenderer.ts · share.ts · storage.ts · router.ts
   components/  QuestionCard · AxisQuestion · BallotSlip · PartyHero · Progress · Masthead · …
-  pages/       Intro · Quiz · Loading · Priorities · Result · TextPage · Sources
+  pages/       Intro · Quiz · Loading · Result · TextPage · Sources
+  og/          render.ts: יוצר את תמונות התצוגה המקדימה (דרך og.html)
 scripts/       simulate.ts · spec-tables.ts · portraits.py (דיוקנאות דרך fal)
-public/        favicon.svg · party-leaders/ (6 דיוקנאות מאוירים)
+public/        favicon.svg · party-leaders/ (6 דיוקנאות מאוירים) · og/ (תמונות תצוגה מקדימה לקישורים)
 ```
 
 - **הניקוד** רשום לפי הרשימות עצמן, וכל נקודה נשענת על עמדה מתועדת ב-`src/data/positions.ts` (מצע, אתר, סרטון או ריאיון, עם קישור ותאריך). בדיקה אוטומטית נכשלת אם רשימה מקבלת נקודות בלי מקור משלה.
 - **ההתקדמות** נשמרת ב-localStorage, וכל שאלה היא רשומה בהיסטוריה (`#/q/4`), כך שרענון ו-swipe-back עובדים.
-- **כרטיס השיתוף** מצויר ב-Canvas 2D בשני פורמטים: פוסט 1080×1350 וסטורי 1080×1920. השיתוף עובר דרך Web Share API, ואם הוא לא זמין, התמונה יורדת והטקסט מועתק.
+- **שיתוף הוא קישור, בלי הורדות.** בטלפון נפתחת חלונית השיתוף עם טקסט וקישור, ובמחשב הקישור מועתק.
+  - הקישור הוא `/r/<slug>/`, עמוד סטטי שנוצר ב-build, עם תגי Open Graph ותמונה (`public/og/<slug>.jpg`, בגודל 1200×630).
+  - מי שפותח את הקישור מגיע לשאלון.
+  - כדי ליצור את התמונות מחדש: `npm run dev`, ואז לפתוח `http://localhost:5173/og.html`. התמונות נשמרות ב-`public/og/`.
 
 ## דיוקנאות
 
 - קובץ הדיוקן נשמר ב-`public/party-leaders/<slug>.webp`, ובשדה `portrait` ב-`src/data/parties.ts` מוסיפים את הנתיב.
 - כשיש דיוקן, מופיעים אוטומטית:
-  - תג "איור"
-  - שורת הגילוי שנדרשת לפי כללי ועדת הבחירות
+  - תג "איור". הוא מה שמסמן שזה איור, ולכן אסור להוריד אותו. אצל דמות אנונימית מופיע במקומו פס "וואלאק, לא מצאנו שום תמונה של ראש המפלגה"
   - שורה בדף המתודולוגיה
 - רפרנסים (צילומים מוגנים) נשמרים רק בתיקייה `references/`, שהיא ב-`.gitignore`.
 
@@ -54,6 +57,6 @@ public/        favicon.svg · party-leaders/ (6 דיוקנאות מאוירים)
 ## לפני השקה
 
 - [ ] לאמת אותיות, שמות וראשי רשימות מול ועדת הבחירות (ב-`parties.ts` יש TODO).
-- [ ] לבדוק על אייפון אמיתי: שיתוף, יצירת תמונה, סליידר, swipe-back.
+- [ ] לבדוק על אייפון אמיתי: שיתוף (חלונית השיתוף ותצוגה מקדימה בוואטסאפ), סליידר, swipe-back.
 - [ ] לבחור ספק analytics (`src/lib/analytics.ts`), cookieless, בלי לשלוח תשובות.
 - [ ] להסיר את `VITE_NOINDEX`.

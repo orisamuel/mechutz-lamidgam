@@ -58,16 +58,8 @@ export function matchSentence(partyName: string, stances: string[]): string | nu
   return stances.length ? `כמו ${partyName}, גם אתם בעד ${joinHebrew(stances)}.` : null;
 }
 
-/** The share card's line: "בעד שמיטת חובות ותקרת שכר לבכירים." */
-export function cardStances(stances: string[]): string {
-  return stances.length ? `בעד ${joinHebrew(stances)}.` : '';
-}
-
-/** "יצא לי גן עדן, 91%. בעד שמיטת חובות ותקרת שכר לבכירים." + link */
-export function shareText(partyName: string, percent: number, stances: string[], url: string): string {
+/** "יצא לי גן עדן, 91%. בעד שמיטת חובות ותקרת שכר לבכירים." The link is shared next to it, not inside. */
+export function shareText(partyName: string, percent: number, stances: string[]): string {
   const top = stances.slice(0, 2);
-  const line = top.length
-    ? `יצא לי ${partyName}, ${percent}%. בעד ${joinHebrew(top)}.`
-    : `יצא לי ${partyName}, ${percent}%.`;
-  return url ? `${line}\n${url}` : line;
+  return top.length ? `יצא לי ${partyName}, ${percent}%. בעד ${joinHebrew(top)}.` : `יצא לי ${partyName}, ${percent}%.`;
 }

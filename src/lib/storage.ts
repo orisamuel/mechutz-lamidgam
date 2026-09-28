@@ -6,37 +6,28 @@ const SCHEMA_VERSION = 1;
 interface Persisted {
   v: number;
   answers: Answers;
-  /** Question ids marked "חשוב לי במיוחד". Optional: older saves don't have it. */
-  priorities?: string[];
 }
-
-export interface SavedState {
-  answers: Answers;
-  priorities: string[];
-}
-
-const EMPTY: SavedState = { answers: {}, priorities: [] };
 
 /**
  * Restores saved progress. Anything that no longer matches the current questions
  * (removed question, renamed option, bad value) is dropped rather than trusted.
  */
-export function loadState(questions: Question[]): SavedState {
+export function loadState(questions: Question[]): Answers {
   let raw: string | null = null;
   try {
     raw = window.localStorage.getItem(STORAGE_KEY);
   } catch {
-    return { ...EMPTY };
+    return {};
   }
-  if (!raw) return { ...EMPTY };
+  if (!raw) return {};
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch {
-    return { ...EMPTY };
+    return {};
   }
-  if (!isRecord(parsed) || parsed.v !== SCHEMA_VERSION || !isRecord(parsed.answers)) return { ...EMPTY };
+  if (!isRecord(parsed) || parsed.v !== SCHEMA_VERSION || !isRecord(parsed.answers)) return {};
 
   const stored = parsed.answers;
   const answers: Answers = {};
@@ -44,15 +35,11 @@ export function loadState(questions: Question[]): SavedState {
     const a = normalizeAnswer(q, stored[q.id]);
     if (a) answers[q.id] = a;
   }
-  const ids = new Set(questions.map((q) => q.id));
-  const priorities = Array.isArray(parsed.priorities)
-    ? parsed.priorities.filter((id): id is string => typeof id === 'string' && ids.has(id))
-    : [];
-  return { answers, priorities };
+  return answers;
 }
 
-export function saveState(answers: Answers, priorities: string[]): void {
-  const data: Persisted = { v: SCHEMA_VERSION, answers, priorities };
+export function saveState(answers: Answers): void {
+  const data: Persisted = { v: SCHEMA_VERSION, answers };
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch {

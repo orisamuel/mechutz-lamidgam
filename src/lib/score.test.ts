@@ -128,7 +128,7 @@ describe('computeResult', () => {
   });
 });
 
-describe('priorities (the "important to me" step)', () => {
+describe('priorities (engine support; the UI step was removed on 28.09)', () => {
   it(`counts a marked issue ${PRIORITY_WEIGHT}× in both the score and the maximum`, () => {
     const answers = randomAnswers(QUESTIONS, mulberry32(8), { skipRate: 0 });
     const plain = computeResult(QUESTIONS, answers)!;

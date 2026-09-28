@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import { PARTIES } from './data/parties';
 import { COPY } from './data/copy';
@@ -31,6 +31,10 @@ const skipCurrent = (user: UserEvent) => user.click(screen.getByRole('button', {
 const saved = () => JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? '{}');
 
 describe('quiz flow', () => {
+  afterEach(() => {
+    Reflect.deleteProperty(URL, 'createObjectURL');
+  });
+
   it('opens with the next prime minister', async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -94,7 +98,7 @@ describe('quiz flow', () => {
     await waitFor(() => expect(screen.getByText(progress(1))).toBeInTheDocument());
   });
 
-  it('no positions at all still gets a list (and skips the weighting step)', async () => {
+  it('no positions at all still gets a list', async () => {
     const user = userEvent.setup();
     render(<App />);
     await start(user);
@@ -107,30 +111,25 @@ describe('quiz flow', () => {
     expect(screen.queryByText(/גם אתם בעד/)).not.toBeInTheDocument();
   });
 
-  it('a full run: weighting step, then the winner with two runners-up right under it', async () => {
+  it('a full run: straight from the last question to the winner, with two runners-up right under it', async () => {
     const user = userEvent.setup();
     render(<App />);
     await start(user);
     for (let i = 0; i < QUESTIONS.length; i++) await answerCurrent(user);
 
-    expect(await screen.findByRole('heading', { name: 'מה הכי חשוב לכם?' })).toBeInTheDocument();
-    expect(screen.getAllByRole('checkbox')).toHaveLength(QUESTIONS.length);
-    await user.click(screen.getByRole('checkbox', { name: /ראש הממשלה/ }));
-    await user.click(screen.getByRole('checkbox', { name: /יוקר המחיה/ }));
-    expect(screen.getByText('נבחרו 2 מתוך 2')).toBeInTheDocument();
-    // A third issue can't be added: "בחרו עד שני נושאים".
-    const third = screen.getByRole('checkbox', { name: /מספר המפלגות/ });
-    expect(third).toBeDisabled();
-    expect(saved().priorities).toEqual(['pm', 'cost']);
-    await user.click(screen.getByRole('button', { name: 'לתוצאה' }));
-
+    // No "מה הכי חשוב לכם?" step any more.
     expect(await screen.findByRole('heading', { level: 1, name: partyNames })).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     expect(screen.getByText('זו המפלגה שהכי מתאימה לך')).toBeInTheDocument();
     // First answer everywhere → Sharsher's four own answers win it.
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('שרשר');
     expect(screen.getByText(/^כמו שרשר, גם אתם בעד הרחבת סל התרופות, כתר לנשיא טראמפ ומאבק בחרמות על ילדים\.$/)).toBeInTheDocument();
     expect(screen.queryByText(/סוגיות נמצאה התאמה/)).not.toBeInTheDocument();
     expect(screen.queryByText('המיקום שלך')).not.toBeInTheDocument();
+    // No AI-disclosure line under the portrait; the "איור" pill says it is a drawing.
+    expect(screen.queryByText(/לא תועד במקור/)).not.toBeInTheDocument();
+    expect(screen.getByText('איור')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /סטורי/ })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /למצע המפלגה|לעמוד המפלגה/ })).toHaveAttribute('target', '_blank');
 
     const runnersRegion = screen.getByRole('region', { name: 'ההתאמות הבאות' });
@@ -148,6 +147,22 @@ describe('quiz flow', () => {
 
     await user.click(screen.getByRole('button', { name: 'עשו שוב' }));
     expect(screen.getByText(progress(1))).toBeInTheDocument();
+  });
+
+  it('shares a plain link to the party page: copied on a computer, no image download', async () => {
+    const createObjectURL = vi.fn();
+    Object.defineProperty(URL, 'createObjectURL', { value: createObjectURL, configurable: true });
+
+    const user = userEvent.setup(); // installs a clipboard we can read back
+    render(<App />);
+    await start(user);
+    for (let i = 0; i < QUESTIONS.length; i++) await answerCurrent(user);
+    await user.click(await screen.findByRole('button', { name: 'שתפו את התוצאה' }));
+
+    const copied = await navigator.clipboard.readText();
+    expect(copied).toMatch(/^יצא לי שרשר, \d{2}%\. בעד הרחבת סל התרופות וכתר לנשיא טראמפ\.\n.+\/r\/sharsher\/$/);
+    expect(await screen.findByText(COPY.toast.copied)).toBeInTheDocument();
+    expect(createObjectURL).not.toHaveBeenCalled();
   });
 
   it('does not let a fresh visitor jump ahead via the URL', () => {
