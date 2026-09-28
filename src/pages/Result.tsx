@@ -22,7 +22,7 @@ interface Props {
   match: string | null;
   /** A true detail about the party, when it applies. */
   flavor: string | null;
-  /** "יצא לי גן עדן. ומה יוצא לכם?" — the link travels separately, so messengers build its preview. */
+  /** "עשיתי את מצפן המפלגות הקטנות, והמפלגה שהכי מתאימה לי היא…" — the link travels separately, so messengers build its preview. */
   shareText: string;
   /** The quiz itself, fresh: whoever opens it starts from the beginning. */
   shareUrl: string;

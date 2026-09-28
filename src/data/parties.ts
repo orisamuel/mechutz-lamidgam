@@ -34,6 +34,8 @@ export interface Party {
   bodies: string[];
   /** A true, citable detail about the list, shown under the body when the condition holds. */
   flavor: { text: string; when: FlavorCondition[] };
+  /** The punchline in a shared result: "…המפלגה שהכי מתאימה לי היא X. {sharePunch}". Must stay true to `basis`. */
+  sharePunch: string;
   /** The positions behind every claim in `bodies` and `flavor`. */
   basis: PositionId[];
 }
@@ -62,6 +64,7 @@ export const PARTIES: Party[] = [
       text: 'הפיראטים מבקשים ממי שיש לו בית פוליטי ללכת לשם. מסתבר שהבית שלכם כאן.',
       when: [{ type: 'always' }],
     },
+    sharePunch: 'הם מבקשים ממי שיש לו בית פוליטי ללכת לשם, אז כנראה שאין לי.',
     basis: ['pirates/liquid-democracy', 'pirates/every-shekel', 'pirates/cameras', 'pirates/threshold', 'pirates/free-internet', 'pirates/copying', 'pirates/political-home'],
   },
   {
@@ -80,6 +83,7 @@ export const PARTIES: Party[] = [
       'במצע של סדר חדש: כל אזור בוחר את הנציגים שלו, היומנים של נבחרי הציבור גלויים לכולם, וליד כל תחנת רכבת יש מגדלי שכירות לזוגות צעירים.',
     ],
     flavor: { text: 'המצע שלהם נפתח בהבטחה אחת: לא להבטיח הבטחות שווא.', when: [{ type: 'always' }] },
+    sharePunch: 'הם מבטיחים לא להבטיח הבטחות שווא, וזה כבר יותר ממה שקיבלתי מכל השאר.',
     basis: ['seder-chadash/direct-pm', 'seder-chadash/ministers', 'seder-chadash/term-limit', 'seder-chadash/regional', 'seder-chadash/calendars', 'seder-chadash/train-rentals', 'seder-chadash/no-false-promises'],
   },
   {
@@ -101,6 +105,7 @@ export const PARTIES: Party[] = [
       text: 'אני ואתה גם דורשים שהסקרים יציגו את כל הרשימות, ולא רק את הגדולות ו"אחר".',
       when: [{ type: 'always' }],
     },
+    sharePunch: 'בינתיים זה בעיקר אני.',
     basis: ['ani-veata/capital-government', 'ani-veata/free-land', 'ani-veata/fourth-branch', 'ani-veata/state-enterprises', 'ani-veata/drug-authority', 'ani-veata/free-education', 'ani-veata/polls'],
   },
   {
@@ -119,6 +124,7 @@ export const PARTIES: Party[] = [
       'במצע של גן עדן: משרד לשלום ולפיוס, חוק יסוד: האדם כמקדש חי, ותקרת שכר לבכירי הציבור.',
     ],
     flavor: { text: 'על הפתק היה אמור להיות כתוב יה. ועדת הבחירות אישרה רק ה.', when: [{ type: 'always' }] },
+    sharePunch: 'יש להם כבר תאריך לשמיטת החובות, 1.1.2027, ואצלי זה כבר ביומן.',
     basis: ['gan-eden/jubilee', 'gan-eden/basic-wage', 'gan-eden/peace-ministry', 'gan-eden/living-temple', 'gan-eden/clean-government', 'gan-eden/letters'],
   },
   {
@@ -140,6 +146,7 @@ export const PARTIES: Party[] = [
       text: 'שרשר גם הבטיח להגיע לבית הלבן ולהעניק לטראמפ את הכתר שלו.',
       when: [{ type: 'always' }],
     },
+    sharePunch: 'אם הוא ייבחר, טראמפ מקבל כתר ונתניהו מקבל את משרד החוץ.',
     basis: ['sharsher/vision', 'sharsher/drug-basket', 'sharsher/boycotts', 'sharsher/pm-netanyahu', 'sharsher/trauma', 'sharsher/draft', 'sharsher/crown-trump'],
   },
   {
@@ -165,6 +172,7 @@ export const PARTIES: Party[] = [
       text: 'ואם השיטה תשתנה, גם התיקון עצמה מתכננת להפוך ללא רלוונטית.',
       when: [{ type: 'always' }],
     },
+    sharePunch: 'הם רוצים לבטל את כל המפלגות, כולל את עצמם. סוף סוף מישהו עקבי.',
     basis: ['hatikun/no-parties', 'hatikun/pm-ceo', 'hatikun/targets', 'hatikun/referendums', 'hatikun/service-vote', 'hatikun/obsolete'],
   },
 ];

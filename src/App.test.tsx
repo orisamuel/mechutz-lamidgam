@@ -168,8 +168,13 @@ describe('quiz flow', () => {
     const menu = screen.getByRole('group', { name: COPY.share.menuLabel });
     const whatsapp = within(menu).getByRole('link', { name: COPY.share.targets.whatsapp });
     const message = decodeURIComponent(whatsapp.getAttribute('href')!.replace('https://wa.me/?text=', ''));
-    const [text, link] = message.split('\n');
-    expect(text).toBe('יצא לי שרשר. ומה יוצא לכם?');
+    const lines = message.split('\n');
+    const link = lines.pop();
+    // Says what this is and which party, with the party's own punchline, then asks back.
+    expect(lines).toEqual([
+      'עשיתי את מצפן המפלגות הקטנות, והמפלגה שהכי מתאימה לי היא שרשר. אם הוא ייבחר, טראמפ מקבל כתר ונתניהו מקבל את משרד החוץ.',
+      'איזו מפלגה קטנה מתאימה לכם?',
+    ]);
     // The link is the quiz itself, not a result page (VITE_SITE_URL in CI, the local address otherwise).
     expect(link).toBe(siteUrl());
     expect(link).not.toContain('/r/');

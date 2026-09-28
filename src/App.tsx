@@ -184,7 +184,9 @@ export default function App() {
             body={pickBody(party, answers)}
             match={matchSentence(party.shortName, stances)}
             flavor={result.answeredIds.length === 0 ? COPY.result.noOpinion : flavorLine(party, answers)}
-            shareText={COPY.share.message(party.shortName)}
+            shareText={
+              result.answeredIds.length === 0 ? COPY.share.noOpinion : COPY.share.message(party.shortName, party.sharePunch)
+            }
             shareUrl={siteUrl()}
             runnersUp={runnersUp}
             onRetake={restart}

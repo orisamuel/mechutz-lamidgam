@@ -57,7 +57,11 @@ export const COPY = {
   },
   share: {
     /** What a share says. The link (the quiz itself) goes next to it, and the chat shows its preview image. */
-    message: (party: string) => `יצא לי ${party}. ומה יוצא לכם?`,
+    /** Says what this is, names the party, adds its own punchline (parties.ts `sharePunch`), asks back. */
+    message: (party: string, punch: string) =>
+      `עשיתי את מצפן המפלגות הקטנות, והמפלגה שהכי מתאימה לי היא ${party}. ${punch}\nאיזו מפלגה קטנה מתאימה לכם?`,
+    /** Someone who skipped everything still gets the Pirates (NO_OPINION_PARTY). */
+    noOpinion: `עשיתי את מצפן המפלגות הקטנות בלי להביע אף עמדה, ועדיין יצאה לי מפלגה: הפיראטים. הם אומרים שהם בדיוק בשביל מי שאין לו בית פוליטי.\nאיזו מפלגה קטנה מתאימה לכם?`,
     menuLabel: 'שיתוף',
     targets: { whatsapp: 'וואטסאפ', facebook: 'פייסבוק', telegram: 'טלגרם', x: 'X', email: 'מייל' },
     copyLink: 'העתקת הקישור',
