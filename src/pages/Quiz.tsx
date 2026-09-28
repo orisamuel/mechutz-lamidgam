@@ -19,7 +19,8 @@ interface Props {
 
 export function Quiz({ question, index, total, answer, onAnswer, onNext, onBack, onSkip, onHome }: Props) {
   const selectedId = answer?.kind === 'choice' ? answer.optionId : null;
-  const value = answer?.kind === 'axis' ? answer.value : null;
+  // A slider left untouched last time shows as untouched again.
+  const value = answer?.kind === 'axis' && !answer.untouched ? answer.value : null;
   // Sliders can always continue: untouched means exactly the middle.
   const canContinue = question.kind === 'choice' ? selectedId !== null : true;
 

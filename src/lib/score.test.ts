@@ -5,7 +5,7 @@ import { mulberry32, randomAnswers } from './simulate';
 import {
   axisPoints,
   computeResult,
-  NO_OPINION_ARCHETYPE,
+  NO_OPINION_PARTY,
   NO_OPINION_PERCENT,
   PCT_MAX,
   PCT_MIN,
@@ -30,63 +30,81 @@ function choiceQ(id: string, options: Record<string, Weights>): ChoiceQuestion {
       id: oid,
       label: oid,
       weights,
-      descriptor: { text: `${id}-${oid}`, strength: 1 },
+      basis: [],
+      stance: `${id}-${oid}`,
     })),
   };
 }
 
-function axisQ(id: string, anchors: AxisQuestion['anchors']): AxisQuestion {
-  return { id, kind: 'axis', axis: 'pizzaFalafel', category: 'test', prompt: id, topic: id, anchors };
+function axisQ(id: string, anchors: Omit<AxisQuestion['anchors'][number], 'basis'>[]): AxisQuestion {
+  return {
+    id,
+    kind: 'axis',
+    axis: 'parties',
+    category: 'test',
+    prompt: id,
+    topic: id,
+    anchors: anchors.map((a) => ({ ...a, basis: [] })),
+  };
 }
 
 const pick = (optionId: string) => ({ kind: 'choice', optionId }) as const;
 
 describe('questionPoints', () => {
-  it('matches the worked examples in SCORING.md', () => {
-    const voice = questionPoints(byId('q2'), pick('c'))!; // הודעה קולית 4:38 → מחייבת תמלול
-    expect(voice.digital_autonomy).toBe(3);
-    expect(voice.procedural_order).toBe(1);
+  it('gives the list its own position 3 points, and a list with a close one 1–2', () => {
+    const ceo = questionPoints(byId('pm'), pick('b'))!; // ראש ממשלה שממונה כמו מנכ"ל
+    expect(ceo.hatikun).toBe(3);
+    expect(ceo['seder-chadash']).toBe(0);
 
-    const fiveMinutes = questionPoints(byId('q3'), pick('a'))!; // "אני חמש דקות מגיע" → חמש דקות
-    expect(fiveMinutes.procedural_order).toBe(3);
-    expect(fiveMinutes.process_reform).toBe(1);
+    const catering = questionPoints(byId('corruption'), pick('a'))!; // כל שקל גלוי, כולל הקייטרינג
+    expect(catering.pirates).toBe(3);
+    expect(catering['seder-chadash']).toBe(1);
 
-    const trap = questionPoints(byId('q7'), pick('d'))!; // "תבואו מתי שנוח" → מלכודת
-    expect(trap.peace_and_quiet).toBe(2);
-    expect(trap.procedural_order).toBe(1);
+    const trauma = questionPoints(byId('health'), pick('d'))!; // ריפוי טראומה
+    expect(trauma['gan-eden']).toBe(3);
+    expect(trauma.sharsher).toBe(2);
   });
 
   it('returns null for skipped, unanswered, mismatched or unknown answers', () => {
-    expect(questionPoints(byId('q2'), { kind: 'skip' })).toBeNull();
-    expect(questionPoints(byId('q2'), undefined)).toBeNull();
-    expect(questionPoints(byId('q2'), { kind: 'axis', value: 40 })).toBeNull();
-    expect(questionPoints(byId('q2'), pick('zzz'))).toBeNull();
+    expect(questionPoints(byId('pm'), { kind: 'skip' })).toBeNull();
+    expect(questionPoints(byId('pm'), undefined)).toBeNull();
+    expect(questionPoints(byId('pm'), { kind: 'axis', value: 40 })).toBeNull();
+    expect(questionPoints(byId('pm'), pick('zzz'))).toBeNull();
+  });
+});
+
+describe('untouched sliders', () => {
+  it('score exactly like the middle', () => {
+    const service = byId('service');
+    expect(questionPoints(service, { kind: 'axis', value: 50, untouched: true })).toEqual(
+      questionPoints(service, { kind: 'axis', value: 50 }),
+    );
   });
 });
 
 describe('axisPoints', () => {
-  const q = axisQ('a', [{ archetype: 'digital_autonomy', at: 50 }]);
+  const q = axisQ('a', [{ party: 'pirates', at: 50 }]);
 
   it('gives 3 at the anchor, falling linearly to 0 at the spread', () => {
-    expect(axisPoints(q, 50).digital_autonomy).toBe(3);
-    expect(axisPoints(q, 85).digital_autonomy).toBe(0);
-    expect(axisPoints(q, 100).digital_autonomy).toBe(0);
-    expect(axisPoints(q, 60).digital_autonomy).toBeCloseTo(3 * (1 - 10 / 35));
+    expect(axisPoints(q, 50).pirates).toBe(3);
+    expect(axisPoints(q, 85).pirates).toBe(0);
+    expect(axisPoints(q, 100).pirates).toBe(0);
+    expect(axisPoints(q, 60).pirates).toBeCloseTo(3 * (1 - 10 / 35));
   });
 });
 
 describe('computeResult', () => {
-  it('gives a result even with no positions at all: peace and quiet, confidently', () => {
+  it('gives a result even with no positions at all: the Pirates, confidently', () => {
     const allSkipped: Answers = Object.fromEntries(QUESTIONS.map((q) => [q.id, { kind: 'skip' }]));
     const none = computeResult(QUESTIONS, allSkipped);
-    expect(none.winner).toBe(NO_OPINION_ARCHETYPE);
+    expect(none.winner).toBe(NO_OPINION_PARTY);
     expect(none.percent).toBe(NO_OPINION_PERCENT);
     expect(none.answeredIds).toHaveLength(0);
     expect(none.skippedIds).toHaveLength(QUESTIONS.length);
     expect(topMatches(none)).toHaveLength(3);
 
-    const one = computeResult(QUESTIONS, { ...allSkipped, q2: pick('c') });
-    expect(one.winner).toBe('digital_autonomy');
+    const one = computeResult(QUESTIONS, { ...allSkipped, pm: pick('b') });
+    expect(one.winner).toBe('hatikun');
   });
   it('keeps the percentage between the bounds and never shows 100%', () => {
     expect(percentFromAffinity(0)).toBe(PCT_MIN);
@@ -114,21 +132,21 @@ describe('priorities (the "important to me" step)', () => {
   it(`counts a marked issue ${PRIORITY_WEIGHT}× in both the score and the maximum`, () => {
     const answers = randomAnswers(QUESTIONS, mulberry32(8), { skipRate: 0 });
     const plain = computeResult(QUESTIONS, answers)!;
-    const weighted = computeResult(QUESTIONS, answers, ['q2'])!;
-    const q2 = questionPoints(byId('q2'), answers.q2)!;
+    const weighted = computeResult(QUESTIONS, answers, ['pm'])!;
+    const pm = questionPoints(byId('pm'), answers.pm)!;
     for (const a of Object.keys(plain.scores) as (keyof typeof plain.scores)[]) {
-      expect(weighted.scores[a]).toBeCloseTo(plain.scores[a] + q2[a] * (PRIORITY_WEIGHT - 1));
+      expect(weighted.scores[a]).toBeCloseTo(plain.scores[a] + pm[a] * (PRIORITY_WEIGHT - 1));
+      expect(weighted.perQuestion.pm![a]).toBe(pm[a] * PRIORITY_WEIGHT);
     }
-    expect(weighted.perQuestion.q2!.digital_autonomy).toBe(q2.digital_autonomy * PRIORITY_WEIGHT);
   });
 
   it('can change the winner', () => {
-    const duel = (id: string) => choiceQ(id, { a: { digital_autonomy: 3 }, b: { procedural_order: 3 } });
-    const questions = ['a1', 'a2', 'a3', 'b1', 'b2'].map(duel).concat(choiceQ('f', { z: { human_consensus: 1 } }));
+    const duel = (id: string) => choiceQ(id, { a: { pirates: 3 }, b: { 'seder-chadash': 3 } });
+    const questions = ['a1', 'a2', 'a3', 'b1', 'b2'].map(duel).concat(choiceQ('f', { z: { 'ani-veata': 1 } }));
     const answers: Answers = { a1: pick('a'), a2: pick('a'), a3: pick('a'), b1: pick('b'), b2: pick('b'), f: pick('z') };
     // Plain: DA 9 vs PO 6. With b1 and b2 marked important: DA 9 vs PO 12.
-    expect(computeResult(questions, answers)!.winner).toBe('digital_autonomy');
-    expect(computeResult(questions, answers, ['b1', 'b2'])!.winner).toBe('procedural_order');
+    expect(computeResult(questions, answers)!.winner).toBe('pirates');
+    expect(computeResult(questions, answers, ['b1', 'b2'])!.winner).toBe('seder-chadash');
   });
 });
 
@@ -140,8 +158,8 @@ describe('topMatches', () => {
       if (!r) continue;
       const top = topMatches(r);
       expect(top).toHaveLength(3);
-      expect(top[0]).toEqual({ archetype: r.winner, percent: r.percent });
-      expect(new Set(top.map((m) => m.archetype)).size).toBe(3);
+      expect(top[0]).toEqual({ party: r.winner, percent: r.percent });
+      expect(new Set(top.map((m) => m.party)).size).toBe(3);
       expect(top[1]!.percent).toBeLessThan(top[0]!.percent);
       expect(top[2]!.percent).toBeLessThan(top[1]!.percent);
       expect(top[2]!.percent).toBeGreaterThanOrEqual(RUNNER_UP_MIN - 2);
@@ -150,37 +168,37 @@ describe('topMatches', () => {
 });
 
 describe('tie-break cascade', () => {
-  const filler = choiceQ('f', { z: { human_consensus: 1 } });
+  const filler = choiceQ('f', { z: { 'ani-veata': 1 } });
   const fillers = (n: number): [Question[], Answers] => {
     const qs = Array.from({ length: n }, (_, i) => ({ ...filler, id: `f${i}` }));
     return [qs, Object.fromEntries(qs.map((q) => [q.id, pick('z')]))];
   };
-  const duel = (id: string) => choiceQ(id, { a: { digital_autonomy: 3 }, b: { procedural_order: 3 } });
+  const duel = (id: string) => choiceQ(id, { a: { pirates: 3 }, b: { 'seder-chadash': 3 } });
 
   it('equal totals → the slider (axis) points decide', () => {
     const axis = axisQ('ax', [
-      { archetype: 'digital_autonomy', at: 10 },
-      { archetype: 'procedural_order', at: 90 },
+      { party: 'pirates', at: 10 },
+      { party: 'seder-chadash', at: 90 },
     ]);
     const [fq, fa] = fillers(2);
     const questions = [axis, duel('c1'), duel('c2'), duel('c3'), ...fq];
     // DA: 3 (axis) + 3 = 6 · PO: 3 + 3 = 6
     const answers: Answers = { ax: { kind: 'axis', value: 10 }, c1: pick('b'), c2: pick('b'), c3: pick('a'), ...fa };
     const r = computeResult(questions, answers)!;
-    expect(r.scores.digital_autonomy).toBe(r.scores.procedural_order);
-    expect(r.winner).toBe('digital_autonomy');
+    expect(r.scores.pirates).toBe(r.scores['seder-chadash']);
+    expect(r.winner).toBe('pirates');
     expect(r.tieBreak).toBe('axis');
   });
 
   it('equal totals, no slider difference → more primary hits decide', () => {
-    const small = choiceQ('s', { p: { procedural_order: 1 } });
+    const small = choiceQ('s', { p: { 'seder-chadash': 1 } });
     const smalls = ['s1', 's2', 's3'].map((id) => ({ ...small, id }));
     const [fq, fa] = fillers(1);
     const questions = [duel('c1'), duel('c2'), duel('c3'), ...smalls, ...fq];
     // DA: 3 + 3 (two primary hits) · PO: 3 + 1 + 1 + 1 (one primary hit)
     const answers: Answers = { c1: pick('a'), c2: pick('a'), c3: pick('b'), s1: pick('p'), s2: pick('p'), s3: pick('p'), ...fa };
     const r = computeResult(questions, answers)!;
-    expect(r.winner).toBe('digital_autonomy');
+    expect(r.winner).toBe('pirates');
     expect(r.tieBreak).toBe('primary');
   });
 
@@ -190,19 +208,19 @@ describe('tie-break cascade', () => {
     const answers: Answers = { c1: pick('a'), c2: pick('a'), c3: pick('b'), c4: pick('b'), ...fa };
     const first = computeResult(questions, answers)!;
     expect(first.tieBreak).toBe('hash');
-    expect(['digital_autonomy', 'procedural_order']).toContain(first.winner);
+    expect(['pirates', 'seder-chadash']).toContain(first.winner);
     for (let i = 0; i < 5; i++) expect(computeResult(questions, answers)!.winner).toBe(first.winner);
   });
 
   it(`scores within ${TIE_EPSILON} of each other count as a tie`, () => {
-    const axis = axisQ('ax', [{ archetype: 'digital_autonomy', at: 10 }]);
+    const axis = axisQ('ax', [{ party: 'pirates', at: 10 }]);
     const [fq, fa] = fillers(2);
     const questions = [axis, duel('c1'), duel('c2'), duel('c3'), ...fq];
     // DA: 2.914 (axis at distance 1) + 3 = 5.914 · PO: 3 + 3 = 6 → PO ahead by 0.086 = a tie → axis decides
     const answers: Answers = { ax: { kind: 'axis', value: 11 }, c1: pick('b'), c2: pick('a'), c3: pick('b'), ...fa };
     const r = computeResult(questions, answers)!;
-    expect(r.scores.procedural_order - r.scores.digital_autonomy).toBeLessThan(TIE_EPSILON);
-    expect(r.winner).toBe('digital_autonomy');
+    expect(r.scores['seder-chadash'] - r.scores.pirates).toBeLessThan(TIE_EPSILON);
+    expect(r.winner).toBe('pirates');
     expect(r.tieBreak).toBe('axis');
   });
 

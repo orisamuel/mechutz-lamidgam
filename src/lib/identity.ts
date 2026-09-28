@@ -1,96 +1,73 @@
-import { AXES, bandIndex, type BandIndex } from '../data/axes';
-import type { Answers, AxisId, Question } from '../data/types';
-import { answersHash } from './hash';
+import { AXES, bandIndex } from '../data/axes';
+import type { PartyId } from '../data/partyIds';
+import type { Answer, Answers, AxisId, Question } from '../data/types';
+import { questionPoints } from './score';
 
-export interface AxisReading {
-  questionId: string;
-  axis: AxisId;
-  value: number;
-  band: BandIndex;
-  /** "ימין־מזגן" */
-  descriptor: string;
-  /** "נוטה למזגן" */
-  valueLabel: string;
-  /** Distance from the center, 0–50. */
-  extremeness: number;
-}
-
-export interface TopicReading {
-  questionId: string;
-  text: string;
-  strength: number;
-}
+/** An answer counts as agreeing with a party when it gave that party at least this many points. */
+export const SHARED_MIN_POINTS = 2;
 
 export function axisValueLabel(axis: AxisId, value: number): string {
   return AXES[axis].valueLabels[bandIndex(value)];
 }
 
-/** Answered sliders, in question order. */
-export function axisReadings(questions: Question[], answers: Answers): AxisReading[] {
-  const readings: AxisReading[] = [];
-  for (const q of questions) {
-    const a = answers[q.id];
-    if (q.kind !== 'axis' || a?.kind !== 'axis') continue;
-    const band = bandIndex(a.value);
-    readings.push({
-      questionId: q.id,
-      axis: q.axis,
-      value: a.value,
-      band,
-      descriptor: AXES[q.axis].bands[band],
-      valueLabel: AXES[q.axis].valueLabels[band],
-      extremeness: Math.abs(a.value - 50),
-    });
+/** The "בעד ___" phrase for one answer; null when skipped, unanswered, or a slider nobody moved. */
+export function stanceOf(question: Question, answer: Answer | undefined): string | null {
+  if (!answer) return null;
+  if (question.kind === 'choice') {
+    if (answer.kind !== 'choice') return null;
+    return question.options.find((o) => o.id === answer.optionId)?.stance ?? null;
   }
-  return readings;
-}
-
-export function topicReadings(questions: Question[], answers: Answers): TopicReading[] {
-  const readings: TopicReading[] = [];
-  for (const q of questions) {
-    const a = answers[q.id];
-    if (q.kind !== 'choice' || a?.kind !== 'choice') continue;
-    const option = q.options.find((o) => o.id === a.optionId);
-    if (option) readings.push({ questionId: q.id, text: option.descriptor.text, strength: option.descriptor.strength });
-  }
-  return readings;
+  if (answer.kind !== 'axis' || answer.untouched) return null;
+  return AXES[question.axis].stances[bandIndex(answer.value)] || null;
 }
 
 /**
- * Up to three phrases: the two most decided axes, then the strongest topic stance.
- * Ties between equally strong topic stances are broken by the answers hash, so the same
- * answers always give the same sentence, but different people get variety.
+ * What the user and a party agree on: answers that gave the party SHARED_MIN_POINTS or more.
+ * The user's priority issues come first, then the strongest agreements, then question order.
  */
-export function identityParts(questions: Question[], answers: Answers): string[] {
-  const axes = [...axisReadings(questions, answers)].sort((a, b) => b.extremeness - a.extremeness);
-  const parts = axes.slice(0, 2).map((r) => r.descriptor);
-
-  const hash = answersHash(answers);
-  const topics = topicReadings(questions, answers);
-  const ordered: TopicReading[] = [];
-  const remaining = [...topics];
-  while (remaining.length > 0) {
-    const best = Math.max(...remaining.map((t) => t.strength));
-    const top = remaining.filter((t) => t.strength === best);
-    const pick = top[(hash + ordered.length) % top.length]!;
-    ordered.push(pick);
-    remaining.splice(remaining.indexOf(pick), 1);
-  }
-
-  for (const topic of ordered) {
-    if (parts.length >= 3) break;
-    parts.push(topic.text);
-  }
-  return parts;
+export function sharedStances(
+  questions: Question[],
+  answers: Answers,
+  party: PartyId,
+  priorities: readonly string[] = [],
+  max = 3,
+): string[] {
+  const rows: { stance: string; points: number; priority: boolean; order: number }[] = [];
+  questions.forEach((q, order) => {
+    const points = questionPoints(q, answers[q.id]);
+    const stance = stanceOf(q, answers[q.id]);
+    if (!points || !stance || points[party] < SHARED_MIN_POINTS) return;
+    rows.push({ stance, points: points[party], priority: priorities.includes(q.id), order });
+  });
+  rows.sort((a, b) => Number(b.priority) - Number(a.priority) || b.points - a.points || a.order - b.order);
+  const out: string[] = [];
+  for (const row of rows) if (out.length < max && !out.includes(row.stance)) out.push(row.stance);
+  return out;
 }
 
-export function identitySentence(parts: string[]): string {
-  return parts.length ? `${parts.join('. ')}.` : '';
+/** "א", "א וב", "א, ב וג". The conjunction joins the last item (with a maqaf before a digit or Latin letter). */
+export function joinHebrew(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? '';
+  const last = items[items.length - 1]!;
+  const joined = /^[א-ת]/.test(last) ? `ו${last}` : `ו־${last}`;
+  return `${items.slice(0, -1).join(', ')} ${joined}`;
 }
 
-/** "יצא לי הפיראטים, 93%. מרכז־פיצה, ימין־מזגן." + link */
-export function shareText(partyName: string, percent: number, parts: string[], url: string): string {
-  const stance = parts.slice(0, 2).join(', ');
-  const line = stance ? `יצא לי ${partyName}, ${percent}%. ${stance}.` : `יצא לי ${partyName}, ${percent}%.`;
+/** "כמו גן עדן, גם אתם בעד שמיטת חובות, תקרת שכר לבכירים וחוק יסוד: האדם כמקדש חי." */
+export function matchSentence(partyName: string, stances: string[]): string | null {
+  return stances.length ? `כמו ${partyName}, גם אתם בעד ${joinHebrew(stances)}.` : null;
+}
+
+/** The share card's line: "בעד שמיטת חובות ותקרת שכר לבכירים." */
+export function cardStances(stances: string[]): string {
+  return stances.length ? `בעד ${joinHebrew(stances)}.` : '';
+}
+
+/** "יצא לי גן עדן, 91%. בעד שמיטת חובות ותקרת שכר לבכירים." + link */
+export function shareText(partyName: string, percent: number, stances: string[], url: string): string {
+  const top = stances.slice(0, 2);
+  const line = top.length
+    ? `יצא לי ${partyName}, ${percent}%. בעד ${joinHebrew(top)}.`
+    : `יצא לי ${partyName}, ${percent}%.`;
   return url ? `${line}\n${url}` : line;
 }

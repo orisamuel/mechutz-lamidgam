@@ -2,51 +2,53 @@ import type { AxisId } from './types';
 
 /**
  * Physical orientation is fixed regardless of RTL: `left` is drawn on the left (value 0),
- * `right` on the right (value 100). "ימין־מזגן" therefore really is on the right.
+ * `right` on the right (value 100).
  */
 export interface AxisDef {
   id: AxisId;
   left: string;
   right: string;
-  /** Share/map descriptors per band: 0–24, 25–44, 45–55, 56–75, 76–100. */
-  bands: readonly [string, string, string, string, string];
-  /** Short value labels shown under the slider and used as aria-valuetext. */
+  /** Value labels shown under the slider and used as aria-valuetext, per band: 0–24, 25–44, 45–55, 56–75, 76–100. */
   valueLabels: readonly [string, string, string, string, string];
+  /** Per band, the noun phrase that completes "בעד ___" in the match line and on the share card. */
+  stances: readonly [string, string, string, string, string];
 }
 
 export const AXES: Record<AxisId, AxisDef> = {
-  pizzaFalafel: {
-    id: 'pizzaFalafel',
-    left: 'פיצה',
-    right: 'פלאפל',
-    bands: ['שמאל־פיצה', 'מרכז־פיצה', 'קול צף בשאלת הפיצה', 'מרכז־פלאפל', 'ימין־פלאפל'],
-    valueLabels: ['פיצה', 'נוטה לפיצה', 'מרכז', 'נוטה לפלאפל', 'פלאפל'],
+  parties: {
+    id: 'parties',
+    left: 'אף אחת',
+    right: 'כמה שיותר',
+    valueLabels: ['בלי מפלגות בכלל', 'מעט מפלגות', 'בערך כמו היום', 'יותר מפלגות', 'בלי אחוז חסימה'],
+    stances: ['כנסת בלי מפלגות', 'פחות מפלגות בכנסת', 'שיטת הבחירות הנוכחית', 'יותר מפלגות בכנסת', 'ביטול אחוז החסימה'],
   },
-  seaDesert: {
-    id: 'seaDesert',
-    left: 'ים',
-    right: 'מדבר',
-    bands: ['שמאל־ים', 'מרכז־ים', 'קול צף בין ים למדבר', 'מרכז־מדבר', 'ימין־מדבר'],
-    valueLabels: ['ים', 'נוטה לים', 'מרכז', 'נוטה למדבר', 'מדבר'],
+  service: {
+    id: 'service',
+    left: 'מי שרוצה',
+    right: 'כולם',
+    valueLabels: ['רק מי שרוצה', 'רוב הציבור', 'מי שלא לומד תורה', 'כולם, גם בשירות אזרחי', 'כולם, ומי שלא, לא מצביע'],
+    stances: ['שירות מרצון', 'פטורים רחבים משירות', 'פטור ללומדי תורה', 'שירות לכולם', 'זכות בחירה רק למי ששירת'],
   },
-  windowAC: {
-    id: 'windowAC',
-    left: 'חלון',
-    right: 'מזגן',
-    bands: ['שמאל־חלון', 'מרכז־חלון', 'קול צף בסוגיית המזגן', 'מרכז־מזגן', 'ימין־מזגן'],
-    valueLabels: ['חלון', 'נוטה לחלון', 'מרכז', 'נוטה למזגן', 'מזגן'],
-  },
-  flowCalendar: {
-    id: 'flowCalendar',
-    left: 'נזרום',
-    right: 'שלח זימון',
-    bands: ['גוש הנזרום', 'נוטה לנזרום', 'קול צף בענייני יומן', 'נוטה ליומן', 'גוש היומן'],
-    valueLabels: ['נזרום', 'נוטה לנזרום', 'מרכז', 'נוטה לזימון', 'שלח זימון'],
+  citizens: {
+    id: 'citizens',
+    left: 'לנבחרים',
+    right: 'לאזרחים',
+    valueLabels: [
+      'הנבחרים מחליטים',
+      'בעיקר הנבחרים',
+      'משאל עם בהכרעות גדולות',
+      'האזרחים מציעים חוקים',
+      'כל אזרח מצביע על כל חוק',
+    ],
+    stances: [
+      'הכרעות בידי הנבחרים',
+      'דמוקרטיה ייצוגית',
+      'משאלי עם בהכרעות הגדולות',
+      'חוקים שהאזרחים מציעים',
+      'הצבעה של כל אזרח על כל חוק',
+    ],
   },
 };
-
-/** Map order on "המפה שלי". */
-export const AXIS_ORDER: readonly AxisId[] = ['pizzaFalafel', 'flowCalendar', 'seaDesert', 'windowAC'];
 
 export type BandIndex = 0 | 1 | 2 | 3 | 4;
 

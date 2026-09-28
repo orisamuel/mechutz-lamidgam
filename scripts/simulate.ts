@@ -2,7 +2,7 @@
  * Balance report for GAME_SPEC.md: who wins, how often, and what percentages people see.
  * Run: npm run simulate
  */
-import { ARCHETYPES } from '../src/data/archetypes';
+import { PARTY_IDS } from '../src/data/partyIds';
 import { QUESTIONS } from '../src/data/questions';
 import { computeResult } from '../src/lib/score';
 import { personaAnswers, quantile, simulate, type SliderModel } from '../src/lib/simulate';
@@ -13,9 +13,9 @@ for (const sliders of ['human', 'uniform'] as SliderModel[]) {
   const s = simulate(QUESTIONS, RUNS, 26, { sliders, skipRate: 0.08 });
   const sorted = [...s.percents].sort((a, b) => a - b);
   console.log(`\n## sliders=${sliders}, skip=8%, runs=${RUNS} (with result: ${s.withResult})`);
-  console.log('| archetype | wins |');
+  console.log('| party | wins |');
   console.log('|---|---|');
-  for (const a of ARCHETYPES) console.log(`| ${a} | ${((100 * s.winners[a]) / s.withResult).toFixed(1)}% |`);
+  for (const a of PARTY_IDS) console.log(`| ${a} | ${((100 * s.winners[a]) / s.withResult).toFixed(1)}% |`);
   console.log(
     `percent: min ${sorted[0]} · p10 ${quantile(sorted, 0.1)} · p50 ${quantile(sorted, 0.5)} · p90 ${quantile(sorted, 0.9)} · max ${sorted[sorted.length - 1]}`,
   );
@@ -30,7 +30,7 @@ for (const sliders of ['human', 'uniform'] as SliderModel[]) {
 }
 
 console.log('\n## personas');
-for (const a of ARCHETYPES) {
+for (const a of PARTY_IDS) {
   const r = computeResult(QUESTIONS, personaAnswers(QUESTIONS, a));
   console.log(`${a}: winner=${r?.winner} percent=${r?.percent} affinity=${r?.affinity.toFixed(2)}`);
 }

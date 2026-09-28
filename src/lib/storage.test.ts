@@ -6,12 +6,13 @@ import { clearState, loadState, saveState, STORAGE_KEY } from './storage';
 describe('storage', () => {
   it('round-trips answers and priorities', () => {
     const answers: Answers = {
-      q1: { kind: 'axis', value: 42 },
-      q2: { kind: 'choice', optionId: 'c' },
-      q3: { kind: 'skip' },
+      parties: { kind: 'axis', value: 42 },
+      service: { kind: 'axis', value: 50, untouched: true },
+      pm: { kind: 'choice', optionId: 'c' },
+      cost: { kind: 'skip' },
     };
-    saveState(answers, ['q2', 'q1']);
-    expect(loadState(QUESTIONS)).toEqual({ answers, priorities: ['q2', 'q1'] });
+    saveState(answers, ['pm', 'parties']);
+    expect(loadState(QUESTIONS)).toEqual({ answers, priorities: ['pm', 'parties'] });
     clearState();
     expect(loadState(QUESTIONS)).toEqual({ answers: {}, priorities: [] });
   });
@@ -20,25 +21,29 @@ describe('storage', () => {
     const stored = {
       v: 1,
       answers: {
-        q1: { kind: 'axis', value: 140 }, // out of range
-        q2: { kind: 'choice', optionId: 'zz' }, // removed option
-        q3: { kind: 'axis', value: 10 }, // wrong kind for a choice question
-        q5: { kind: 'choice', optionId: 'b' }, // fine
-        q99: { kind: 'skip' }, // removed question
+        parties: { kind: 'axis', value: 140 }, // out of range
+        pm: { kind: 'choice', optionId: 'zz' }, // removed option
+        cost: { kind: 'axis', value: 10 }, // wrong kind for a choice question
+        health: { kind: 'choice', optionId: 'b', extra: 'dropped' }, // fine, cleaned
+        service: { kind: 'axis', value: 30, untouched: 'yes' }, // fine, junk flag dropped
+        q5: { kind: 'skip' }, // a question from an older version
       },
-      priorities: ['q5', 'q99', 7],
+      priorities: ['health', 'q5', 7],
     };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
-    expect(loadState(QUESTIONS)).toEqual({ answers: { q5: { kind: 'choice', optionId: 'b' } }, priorities: ['q5'] });
+    expect(loadState(QUESTIONS)).toEqual({
+      answers: { health: { kind: 'choice', optionId: 'b' }, service: { kind: 'axis', value: 30 } },
+      priorities: ['health'],
+    });
   });
 
   it('reads saves from before priorities existed', () => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ v: 1, answers: { q5: { kind: 'skip' } } }));
-    expect(loadState(QUESTIONS)).toEqual({ answers: { q5: { kind: 'skip' } }, priorities: [] });
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ v: 1, answers: { pm: { kind: 'skip' } } }));
+    expect(loadState(QUESTIONS)).toEqual({ answers: { pm: { kind: 'skip' } }, priorities: [] });
   });
 
   it('ignores other schema versions and corrupted data', () => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ v: 2, answers: { q5: { kind: 'skip' } } }));
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ v: 2, answers: { pm: { kind: 'skip' } } }));
     expect(loadState(QUESTIONS).answers).toEqual({});
     window.localStorage.setItem(STORAGE_KEY, '{not json');
     expect(loadState(QUESTIONS).answers).toEqual({});
@@ -52,7 +57,7 @@ describe('storage', () => {
       throw new Error('denied');
     });
     expect(loadState(QUESTIONS)).toEqual({ answers: {}, priorities: [] });
-    expect(() => saveState({ q1: { kind: 'skip' } }, [])).not.toThrow();
+    expect(() => saveState({ pm: { kind: 'skip' } }, [])).not.toThrow();
     get.mockRestore();
     set.mockRestore();
   });

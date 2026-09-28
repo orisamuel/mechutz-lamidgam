@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react';
 import { Toast } from './components/Toast';
 import { COPY } from './data/copy';
-import { PARTIES, partyForArchetype } from './data/parties';
+import { PARTIES, partyById } from './data/parties';
 import { QUESTIONS, QUESTION_COUNT } from './data/questions';
 import type { Answer, Answers } from './data/types';
 import { track } from './lib/analytics';
-import { identityParts, identitySentence, shareText } from './lib/identity';
+import { cardStances, matchSentence, sharedStances, shareText } from './lib/identity';
 import { flavorLine, pickBody } from './lib/microcopy';
 import { parseHash, routeToHash, sameRoute, type Route } from './lib/router';
 import { computeResult, isAnswered, topMatches } from './lib/score';
@@ -16,13 +16,14 @@ import { Loading } from './pages/Loading';
 import { Priorities } from './pages/Priorities';
 import { Quiz } from './pages/Quiz';
 import { Result } from './pages/Result';
+import { Sources } from './pages/Sources';
 import { TextPage } from './pages/TextPage';
 
 const LOADING_MS = import.meta.env.MODE === 'test' ? 0 : prefersReducedMotion() ? 600 : 1100;
 
-/** An untouched slider answered with "המשך" means exactly the middle. */
 /** "בחרו עד שני נושאים" — the importance step caps how many issues count double. */
 const MAX_PRIORITIES = 2;
+/** An untouched slider answered with "המשך" means exactly the middle. */
 const AXIS_DEFAULT = 50;
 
 export default function App() {
@@ -94,7 +95,7 @@ export default function App() {
   /** The short "placing you on the map" beat, then the result. */
   const showResult = useCallback(
     (current: Answers, chosen: string[]) => {
-      track('quiz_complete', { party: partyForArchetype(computeResult(QUESTIONS, current, chosen).winner).id });
+      track('quiz_complete', { party: computeResult(QUESTIONS, current, chosen).winner });
       setLoading(true);
       window.setTimeout(() => {
         setLoading(false);
@@ -135,7 +136,10 @@ export default function App() {
   const goMethodology = () => navigate({ name: 'methodology' });
   const clearToast = useCallback(() => setToast(null), []);
 
-  const parts = useMemo(() => identityParts(QUESTIONS, answers), [answers]);
+  const stances = useMemo(
+    () => sharedStances(QUESTIONS, answers, result.winner, priorities),
+    [answers, result.winner, priorities],
+  );
   const url = siteUrl();
 
   let screen: ReactElement;
@@ -173,7 +177,7 @@ export default function App() {
             onNext={() => {
               let next = answers;
               if (question.kind === 'axis' && answers[question.id]?.kind !== 'axis') {
-                next = { ...answers, [question.id]: { kind: 'axis', value: AXIS_DEFAULT } };
+                next = { ...answers, [question.id]: { kind: 'axis', value: AXIS_DEFAULT, untouched: true } };
                 setAnswers(next);
               }
               advance(index, next);
@@ -210,18 +214,19 @@ export default function App() {
         );
         break;
       case 'result': {
-        const party = partyForArchetype(result.winner);
+        const party = partyById(result.winner);
         const runnersUp = topMatches(result)
           .slice(1)
-          .map((m) => ({ party: partyForArchetype(m.archetype), percent: m.percent }));
+          .map((m) => ({ party: partyById(m.party), percent: m.percent }));
         screen = (
           <Result
             party={party}
             percent={result.percent}
             body={pickBody(party, answers)}
-            flavor={flavorLine(party, answers)}
-            identity={identitySentence(parts)}
-            shareText={shareText(party.name, result.percent, parts, url)}
+            match={matchSentence(party.shortName, stances)}
+            flavor={result.answeredIds.length === 0 ? COPY.result.noOpinion : flavorLine(party, answers)}
+            identity={cardStances(stances)}
+            shareText={shareText(party.shortName, result.percent, stances, url)}
             displayUrl={displayUrl(url)}
             runnersUp={runnersUp}
             onRetake={restart}
@@ -240,6 +245,7 @@ export default function App() {
             ))}
             {PARTIES.some((p) => p.portrait) && <p>{COPY.methodology.portraits}</p>}
             <p>{COPY.methodology.privacy}</p>
+            <Sources />
           </TextPage>
         );
         break;

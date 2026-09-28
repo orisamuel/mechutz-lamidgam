@@ -27,12 +27,12 @@ src/
   data/        questions.ts (12 השאלות + מטריצה) · parties.ts · axes.ts · copy.ts · archetypes.ts
   lib/         score.ts · identity.ts · microcopy.ts · cardRenderer.ts · share.ts · storage.ts · router.ts
   components/  QuestionCard · AxisQuestion · BallotSlip · PartyHero · Progress · Masthead · …
-  pages/       Intro · Quiz · Loading · NeedMore · Result · TextPage
+  pages/       Intro · Quiz · Loading · Priorities · Result · TextPage · Sources
 scripts/       simulate.ts · spec-tables.ts · portraits.py (דיוקנאות דרך fal)
 public/        favicon.svg · party-leaders/ (6 דיוקנאות מאוירים)
 ```
 
-- **הניקוד** עובר רק דרך ארכיטיפים פנימיים. אף מקום בקוד לא טוען שלרשימה אמיתית יש עמדה על פיצה או מזגן.
+- **הניקוד** רשום לפי הרשימות עצמן, וכל נקודה נשענת על עמדה מתועדת ב-`src/data/positions.ts` (מצע, אתר, סרטון או ריאיון, עם קישור ותאריך). בדיקה אוטומטית נכשלת אם רשימה מקבלת נקודות בלי מקור משלה.
 - **ההתקדמות** נשמרת ב-localStorage, וכל שאלה היא רשומה בהיסטוריה (`#/q/4`), כך שרענון ו-swipe-back עובדים.
 - **כרטיס השיתוף** מצויר ב-Canvas 2D בשני פורמטים: פוסט 1080×1350 וסטורי 1080×1920. השיתוף עובר דרך Web Share API, ואם הוא לא זמין, התמונה יורדת והטקסט מועתק.
 

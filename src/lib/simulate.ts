@@ -1,4 +1,4 @@
-import { ARCHETYPES, type ArchetypeId } from '../data/archetypes';
+import { PARTY_IDS, type PartyId } from '../data/partyIds';
 import type { Answers, Question } from '../data/types';
 import { computeResult, type ScoreResult } from './score';
 
@@ -51,29 +51,29 @@ function sliderValue(rand: () => number, model: SliderModel): number {
 }
 
 /**
- * The most archetype-typical answer set: for every choice question the option that favors
- * the archetype most over everyone else; sliders at its anchor; no-anchor sliders skipped.
+ * The most party-typical answer set: for every choice question the option that favors
+ * the party most over everyone else; sliders at its anchor; no-anchor sliders skipped.
  */
-export function personaAnswers(questions: Question[], archetype: ArchetypeId): Answers {
+export function personaAnswers(questions: Question[], party: PartyId): Answers {
   const answers: Answers = {};
   for (const q of questions) {
     if (q.kind === 'axis') {
-      const anchor = q.anchors.find((a) => a.archetype === archetype);
+      const anchor = q.anchors.find((a) => a.party === party);
       answers[q.id] = anchor ? { kind: 'axis', value: anchor.at } : { kind: 'skip' };
       continue;
     }
     let best = q.options[0]!;
     let bestMargin = -Infinity;
     for (const option of q.options) {
-      const own = option.weights[archetype] ?? 0;
-      const others = Math.max(0, ...ARCHETYPES.filter((a) => a !== archetype).map((a) => option.weights[a] ?? 0));
+      const own = option.weights[party] ?? 0;
+      const others = Math.max(0, ...PARTY_IDS.filter((a) => a !== party).map((a) => option.weights[a] ?? 0));
       const margin = own * 10 + (own - others);
       if (margin > bestMargin) {
         bestMargin = margin;
         best = option;
       }
     }
-    answers[q.id] = (best.weights[archetype] ?? 0) > 0 ? { kind: 'choice', optionId: best.id } : { kind: 'skip' };
+    answers[q.id] = (best.weights[party] ?? 0) > 0 ? { kind: 'choice', optionId: best.id } : { kind: 'skip' };
   }
   return answers;
 }
@@ -81,7 +81,7 @@ export function personaAnswers(questions: Question[], archetype: ArchetypeId): A
 export interface SimulationSummary {
   runs: number;
   withResult: number;
-  winners: Record<ArchetypeId, number>;
+  winners: Record<PartyId, number>;
   percents: number[];
   affinities: number[];
   tieBreaks: Record<ScoreResult['tieBreak'], number>;
@@ -94,7 +94,7 @@ export function simulate(
   options: { skipRate?: number; sliders?: SliderModel; priorityRate?: number } = {},
 ): SimulationSummary {
   const rand = mulberry32(seed);
-  const winners = Object.fromEntries(ARCHETYPES.map((a) => [a, 0])) as Record<ArchetypeId, number>;
+  const winners = Object.fromEntries(PARTY_IDS.map((a) => [a, 0])) as Record<PartyId, number>;
   const tieBreaks = { none: 0, axis: 0, primary: 0, hash: 0 };
   const percents: number[] = [];
   const affinities: number[] = [];

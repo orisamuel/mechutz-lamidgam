@@ -18,9 +18,11 @@ interface Props {
   party: Party;
   percent: number;
   body: string;
-  /** The party's one-line punch, when it is true for these answers. */
+  /** "כמו {party}, גם אתם בעד…": the user's own answers that match the party. */
+  match: string | null;
+  /** A true detail about the party, when it applies. */
   flavor: string | null;
-  /** Identity sentence for the share card. */
+  /** The shared stances, as printed on the share card. */
   identity: string;
   shareText: string;
   displayUrl: string;
@@ -34,7 +36,7 @@ interface Props {
 type Blobs = Partial<Record<CardFormat, Blob>>;
 
 export function Result(props: Props) {
-  const { party, percent, body, flavor, identity, shareText, displayUrl, runnersUp, onToast } = props;
+  const { party, percent, body, match, flavor, identity, shareText, displayUrl, runnersUp, onToast } = props;
   const [blobs, setBlobs] = useState<Blobs>({});
   const runnersKey = runnersUp.map((r) => `${r.party.id}:${r.percent}`).join('|');
 
@@ -52,7 +54,8 @@ export function Result(props: Props) {
         url: displayUrl,
         portrait,
         disclosure: portrait ? (party.portraitAnonymous ? COPY.result.anonymousDisclosure : COPY.result.aiDisclosure) : null,
-        runnersUp: runnersUp.map((r) => ({ name: r.party.name, letters: r.party.letters, percent: r.percent })),
+        // Short names: a runner-up row has room for about 20 characters.
+        runnersUp: runnersUp.map((r) => ({ name: r.party.shortName, letters: r.party.letters, percent: r.percent })),
       };
       const [post, story] = await Promise.all([renderCardBlob(data, 'post'), renderCardBlob(data, 'story')]);
       if (!cancelled) setBlobs({ post: post ?? undefined, story: story ?? undefined });
@@ -143,6 +146,7 @@ export function Result(props: Props) {
           )}
 
           <h2 className="result__title">{party.title}</h2>
+          {match && <p className="result__match">{match}</p>}
           <p className="result__body">{body}</p>
           {flavor && <p className="result__flavor">{flavor}</p>}
 

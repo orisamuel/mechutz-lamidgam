@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { ARCHETYPES } from '../data/archetypes';
+import { PARTY_IDS } from '../data/partyIds';
 import { QUESTIONS } from '../data/questions';
 import { computeResult } from './score';
 import { personaAnswers, quantile, simulate } from './simulate';
 
-describe('every archetype can win', () => {
-  it.each(ARCHETYPES)('%s wins with its own typical answers', (archetype) => {
-    const result = computeResult(QUESTIONS, personaAnswers(QUESTIONS, archetype));
-    expect(result?.winner).toBe(archetype);
+describe('every party can win', () => {
+  it.each(PARTY_IDS)('%s wins with its own typical answers', (party) => {
+    const result = computeResult(QUESTIONS, personaAnswers(QUESTIONS, party));
+    expect(result?.winner).toBe(party);
     expect(result!.percent).toBeGreaterThanOrEqual(90);
   });
 });
@@ -15,8 +15,8 @@ describe('every archetype can win', () => {
 describe('balance under random answering', () => {
   const summary = simulate(QUESTIONS, 20_000, 7, { sliders: 'human', skipRate: 0.08 });
 
-  it.each(ARCHETYPES)('%s wins between 12% and 22% of random respondents', (archetype) => {
-    const share = summary.winners[archetype] / summary.withResult;
+  it.each(PARTY_IDS)('%s wins between 12% and 22% of random respondents', (party) => {
+    const share = summary.winners[party] / summary.withResult;
     expect(share).toBeGreaterThan(0.12);
     expect(share).toBeLessThan(0.22);
   });

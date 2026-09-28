@@ -3,6 +3,7 @@ import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import App from './App';
 import { PARTIES } from './data/parties';
+import { COPY } from './data/copy';
 import { QUESTIONS } from './data/questions';
 import { STORAGE_KEY } from './lib/storage';
 
@@ -30,11 +31,11 @@ const skipCurrent = (user: UserEvent) => user.click(screen.getByRole('button', {
 const saved = () => JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? '{}');
 
 describe('quiz flow', () => {
-  it('opens with the plastic chair, not with pizza', async () => {
+  it('opens with the next prime minister', async () => {
     const user = userEvent.setup();
     render(<App />);
     await start(user);
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('כיסא פלסטיק');
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('ראש הממשלה הבא');
   });
 
   it('continuing on an untouched slider records exactly the middle', async () => {
@@ -44,13 +45,18 @@ describe('quiz flow', () => {
     while (!screen.queryByRole('slider')) await answerCurrent(user);
     const slider = screen.getByRole('slider');
     expect(slider).toHaveAttribute('aria-valuenow', '50');
-    expect(slider).toHaveAttribute('aria-valuetext', 'מרכז');
+    expect(slider).toHaveAttribute('aria-valuetext', 'בערך כמו היום'); // the middle of "כמה מפלגות"
     const next = screen.getByRole('button', { name: 'המשך' });
     expect(next).toBeEnabled();
 
     const sliderQuestion = QUESTIONS.find((q) => q.kind === 'axis')!;
     await user.click(next);
-    expect(saved().answers[sliderQuestion.id]).toEqual({ kind: 'axis', value: 50 });
+    expect(saved().answers[sliderQuestion.id]).toEqual({ kind: 'axis', value: 50, untouched: true });
+
+    // Coming back, it is still untouched (and still says so).
+    window.history.back();
+    await waitFor(() => expect(screen.getByRole('slider')).toBeInTheDocument());
+    expect(screen.getByText(COPY.quiz.sliderHint)).toBeInTheDocument();
   });
 
   it('dragging with the keyboard sets the value', async () => {
@@ -70,12 +76,12 @@ describe('quiz flow', () => {
     await start(user);
     await answerCurrent(user);
     expect(screen.getByText(progress(2))).toBeInTheDocument();
-    await user.click(screen.getByRole('radio', { name: 'מחייבת תמלול' }));
+    await user.click(screen.getByRole('radio', { name: /מפעלים ממשלתיים/ }));
 
     unmount(); // "refresh": URL hash and localStorage stay
     render(<App />);
     expect(screen.getByText(progress(2))).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: 'מחייבת תמלול' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: /מפעלים ממשלתיים/ })).toBeChecked();
   });
 
   it('browser back goes to the previous question', async () => {
@@ -94,9 +100,11 @@ describe('quiz flow', () => {
     await start(user);
     for (let i = 0; i < QUESTIONS.length; i++) await skipCurrent(user);
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'גן עדן' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'הפיראטים' })).toBeInTheDocument();
     expect(screen.getByText('94%')).toBeInTheDocument();
-    expect(screen.getByText('המערכת זיהתה אצלך נטייה חזקה לשקט.')).toBeInTheDocument();
+    expect(screen.getByText(COPY.result.noOpinion)).toBeInTheDocument();
+    // No positions, so nothing to agree on.
+    expect(screen.queryByText(/גם אתם בעד/)).not.toBeInTheDocument();
   });
 
   it('a full run: weighting step, then the winner with two runners-up right under it', async () => {
@@ -107,17 +115,20 @@ describe('quiz flow', () => {
 
     expect(await screen.findByRole('heading', { name: 'מה הכי חשוב לכם?' })).toBeInTheDocument();
     expect(screen.getAllByRole('checkbox')).toHaveLength(QUESTIONS.length);
-    await user.click(screen.getByRole('checkbox', { name: /הכיסא בחניה/ }));
-    await user.click(screen.getByRole('checkbox', { name: /כריות הנוי/ }));
+    await user.click(screen.getByRole('checkbox', { name: /ראש הממשלה/ }));
+    await user.click(screen.getByRole('checkbox', { name: /יוקר המחיה/ }));
     expect(screen.getByText('נבחרו 2 מתוך 2')).toBeInTheDocument();
     // A third issue can't be added: "בחרו עד שני נושאים".
-    const third = screen.getByRole('checkbox', { name: /המעלית/ });
+    const third = screen.getByRole('checkbox', { name: /מספר המפלגות/ });
     expect(third).toBeDisabled();
-    expect(saved().priorities).toEqual(['q12', 'q11']);
+    expect(saved().priorities).toEqual(['pm', 'cost']);
     await user.click(screen.getByRole('button', { name: 'לתוצאה' }));
 
     expect(await screen.findByRole('heading', { level: 1, name: partyNames })).toBeInTheDocument();
     expect(screen.getByText('זו המפלגה שהכי מתאימה לך')).toBeInTheDocument();
+    // First answer everywhere → Sharsher's four own answers win it.
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('שרשר');
+    expect(screen.getByText(/^כמו שרשר, גם אתם בעד הרחבת סל התרופות, כתר לנשיא טראמפ ומאבק בחרמות על ילדים\.$/)).toBeInTheDocument();
     expect(screen.queryByText(/סוגיות נמצאה התאמה/)).not.toBeInTheDocument();
     expect(screen.queryByText('המיקום שלך')).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /למצע המפלגה|לעמוד המפלגה/ })).toHaveAttribute('target', '_blank');

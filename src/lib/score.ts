@@ -1,16 +1,19 @@
-import { ARCHETYPES, emptyScores, type ArchetypeId, type ScoreMap } from '../data/archetypes';
+import { PARTY_IDS, emptyScores, type PartyId, type ScoreMap } from '../data/partyIds';
 import type { Answer, Answers, AxisQuestion, Question } from '../data/types';
 import { answersHash } from './hash';
 
 /** Points an axis anchor gives fall linearly from 3 (exact hit) to 0 at this distance. */
 export const AXIS_SPREAD = 35;
 export const AXIS_MAX_POINTS = 3;
-/** Someone with no position on anything still gets a list: the peace-and-quiet one, with confidence. */
-export const NO_OPINION_ARCHETYPE: ArchetypeId = 'peace_and_quiet';
+/**
+ * Someone with no position on anything still gets a list, with confidence: the Pirates, who say they
+ * speak to people without a political home and want blank ballots counted as empty seats.
+ */
+export const NO_OPINION_PARTY: PartyId = 'pirates';
 export const NO_OPINION_PERCENT = 94;
 /** Scores closer than this count as a tie and go to the tie-break cascade. */
 export const TIE_EPSILON = 0.25;
-/** A question counts as a "primary hit" for an archetype at this many points or more. */
+/** A question counts as a "primary hit" for a party at this many points or more. */
 export const PRIMARY_HIT = 2.5;
 
 /**
@@ -26,10 +29,10 @@ export const PCT_MAX = 96;
 export type TieBreak = 'none' | 'axis' | 'primary' | 'hash';
 
 export interface ScoreResult {
-  winner: ArchetypeId;
-  ranking: { archetype: ArchetypeId; score: number }[];
+  winner: PartyId;
+  ranking: { party: PartyId; score: number }[];
   scores: ScoreMap;
-  /** Theoretical max per archetype, over the answered questions only. */
+  /** Theoretical max per party, over the answered questions only. */
   maxima: ScoreMap;
   /** Points per answered (non-skipped) question. */
   perQuestion: Record<string, ScoreMap>;
@@ -54,12 +57,12 @@ export function axisPoints(question: AxisQuestion, value: number): ScoreMap {
   for (const anchor of question.anchors) {
     const distance = Math.abs(value - anchor.at);
     const p = AXIS_MAX_POINTS * Math.max(0, 1 - distance / AXIS_SPREAD);
-    points[anchor.archetype] = Math.max(points[anchor.archetype], p);
+    points[anchor.party] = Math.max(points[anchor.party], p);
   }
   return points;
 }
 
-/** Points the answer gives each archetype, or null when unanswered/skipped/invalid. */
+/** Points the answer gives each party, or null when unanswered/skipped/invalid. */
 export function questionPoints(question: Question, answer: Answer | undefined): ScoreMap | null {
   if (!answer || answer.kind === 'skip') return null;
   if (question.kind === 'axis') {
@@ -70,20 +73,20 @@ export function questionPoints(question: Question, answer: Answer | undefined): 
   const option = question.options.find((o) => o.id === answer.optionId);
   if (!option) return null;
   const points = emptyScores();
-  for (const archetype of ARCHETYPES) points[archetype] = option.weights[archetype] ?? 0;
+  for (const id of PARTY_IDS) points[id] = option.weights[id] ?? 0;
   return points;
 }
 
-/** The most points each archetype could get from this question. */
+/** The most points each party could get from this question. */
 export function questionMax(question: Question): ScoreMap {
   const max = emptyScores();
   if (question.kind === 'axis') {
-    for (const anchor of question.anchors) max[anchor.archetype] = AXIS_MAX_POINTS;
+    for (const anchor of question.anchors) max[anchor.party] = AXIS_MAX_POINTS;
     return max;
   }
   for (const option of question.options) {
-    for (const archetype of ARCHETYPES) {
-      max[archetype] = Math.max(max[archetype], option.weights[archetype] ?? 0);
+    for (const id of PARTY_IDS) {
+      max[id] = Math.max(max[id], option.weights[id] ?? 0);
     }
   }
   return max;
@@ -93,7 +96,7 @@ export function questionMax(question: Question): ScoreMap {
 export const RUNNER_UP_MIN = 38;
 
 export interface RankedMatch {
-  archetype: ArchetypeId;
+  party: PartyId;
   percent: number;
 }
 
@@ -103,14 +106,14 @@ export interface RankedMatch {
  */
 export function topMatches(result: ScoreResult, count = 3): RankedMatch[] {
   const [first, ...rest] = result.ranking;
-  const matches: RankedMatch[] = [{ archetype: first!.archetype, percent: result.percent }];
-  const top = result.scores[first!.archetype];
+  const matches: RankedMatch[] = [{ party: first!.party, percent: result.percent }];
+  const top = result.scores[first!.party];
   let previous = result.percent;
   for (const entry of rest.slice(0, count - 1)) {
     const ratio = top > 0 ? Math.max(0, entry.score / top) : 0;
     const scaled = Math.round(RUNNER_UP_MIN + (result.percent - RUNNER_UP_MIN) * ratio);
     const percent = Math.max(RUNNER_UP_MIN - 2, Math.min(previous - 1, scaled));
-    matches.push({ archetype: entry.archetype, percent });
+    matches.push({ party: entry.party, percent });
     previous = percent;
   }
   return matches;
@@ -143,20 +146,20 @@ export function computeResult(
     answeredIds.push(question.id);
     const weight = priorities.includes(question.id) ? PRIORITY_WEIGHT : 1;
     const max = questionMax(question);
-    for (const archetype of ARCHETYPES) {
-      points[archetype] *= weight;
-      scores[archetype] += points[archetype];
-      maxima[archetype] += max[archetype] * weight;
+    for (const id of PARTY_IDS) {
+      points[id] *= weight;
+      scores[id] += points[id];
+      maxima[id] += max[id] * weight;
     }
     perQuestion[question.id] = points;
   }
 
   const noOpinion = answeredIds.length === 0;
   const { winner, tieBreak } = noOpinion
-    ? { winner: NO_OPINION_ARCHETYPE, tieBreak: 'none' as const }
+    ? { winner: NO_OPINION_PARTY, tieBreak: 'none' as const }
     : pickWinner(questions, answers, scores, perQuestion);
-  const ranking = ARCHETYPES.map((archetype) => ({ archetype, score: scores[archetype] })).sort(
-    (a, b) => (a.archetype === winner ? -1 : b.archetype === winner ? 1 : b.score - a.score),
+  const ranking = PARTY_IDS.map((party) => ({ party, score: scores[party] })).sort(
+    (a, b) => (a.party === winner ? -1 : b.party === winner ? 1 : b.score - a.score),
   );
   const affinity = maxima[winner] > 0 ? scores[winner] / maxima[winner] : 0;
 
@@ -184,8 +187,8 @@ function pickWinner(
   answers: Answers,
   scores: ScoreMap,
   perQuestion: Record<string, ScoreMap>,
-): { winner: ArchetypeId; tieBreak: TieBreak } {
-  let tied = leaders([...ARCHETYPES], (a) => scores[a]);
+): { winner: PartyId; tieBreak: TieBreak } {
+  let tied = leaders([...PARTY_IDS], (a) => scores[a]);
   if (tied.length === 1) return { winner: tied[0]!, tieBreak: 'none' };
 
   const axisIds = questions.filter((q) => q.kind === 'axis' && perQuestion[q.id]).map((q) => q.id);
@@ -199,8 +202,8 @@ function pickWinner(
   return { winner: tied[index]!, tieBreak: 'hash' };
 }
 
-/** Archetypes whose value is within TIE_EPSILON of the best. Keeps ARCHETYPES order. */
-function leaders(candidates: ArchetypeId[], value: (a: ArchetypeId) => number): ArchetypeId[] {
+/** Parties whose value is within TIE_EPSILON of the best. Keeps PARTY_IDS order. */
+function leaders(candidates: PartyId[], value: (a: PartyId) => number): PartyId[] {
   const best = Math.max(...candidates.map(value));
   return candidates.filter((a) => best - value(a) < TIE_EPSILON);
 }

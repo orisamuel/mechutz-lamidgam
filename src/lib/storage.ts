@@ -41,8 +41,8 @@ export function loadState(questions: Question[]): SavedState {
   const stored = parsed.answers;
   const answers: Answers = {};
   for (const q of questions) {
-    const a = stored[q.id];
-    if (isValidAnswer(q, a)) answers[q.id] = a;
+    const a = normalizeAnswer(q, stored[q.id]);
+    if (a) answers[q.id] = a;
   }
   const ids = new Set(questions.map((q) => q.id));
   const priorities = Array.isArray(parsed.priorities)
@@ -72,9 +72,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function isValidAnswer(q: Question, a: unknown): a is Answer {
-  if (!isRecord(a)) return false;
-  if (a.kind === 'skip') return true;
-  if (q.kind === 'choice') return a.kind === 'choice' && q.options.some((o) => o.id === a.optionId);
-  return a.kind === 'axis' && typeof a.value === 'number' && Number.isFinite(a.value) && a.value >= 0 && a.value <= 100;
+/** A clean copy of a stored answer, or null when it doesn't fit this question any more. */
+function normalizeAnswer(q: Question, a: unknown): Answer | null {
+  if (!isRecord(a)) return null;
+  if (a.kind === 'skip') return { kind: 'skip' };
+  if (q.kind === 'choice') {
+    const id = a.optionId;
+    return a.kind === 'choice' && typeof id === 'string' && q.options.some((o) => o.id === id)
+      ? { kind: 'choice', optionId: id }
+      : null;
+  }
+  const value = a.value;
+  if (a.kind !== 'axis' || typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 100) return null;
+  return a.untouched === true ? { kind: 'axis', value, untouched: true } : { kind: 'axis', value };
 }

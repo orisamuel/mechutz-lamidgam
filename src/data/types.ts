@@ -1,21 +1,18 @@
-import type { ArchetypeId } from './archetypes';
+import type { PartyId } from './partyIds';
+import type { PositionId } from './positions';
 
-export type Weights = Partial<Record<ArchetypeId, number>>;
+export type Weights = Partial<Record<PartyId, number>>;
 
-export type AxisId = 'pizzaFalafel' | 'seaDesert' | 'windowAC' | 'flowCalendar';
-
-/** A share-sentence phrase attached to a multiple-choice answer ("קו ניצי בנושא..."). */
-export interface Descriptor {
-  text: string;
-  /** 1–3. The identity sentence prefers the strongest descriptor the user earned. */
-  strength: 1 | 2 | 3;
-}
+export type AxisId = 'parties' | 'service' | 'citizens';
 
 export interface ChoiceOption {
   id: string;
   label: string;
   weights: Weights;
-  descriptor: Descriptor;
+  /** The published positions behind the weights. Every weighted party needs at least one of its own. */
+  basis: PositionId[];
+  /** Noun phrase that completes "בעד ___" in the result's match line and on the share card. */
+  stance: string;
 }
 
 interface QuestionBase {
@@ -23,7 +20,7 @@ interface QuestionBase {
   /** Small label above the question, phrased like a policy domain. */
   category: string;
   prompt: string;
-  /** Noun phrase used in computed micro-copy: "בנושא {topic} נרשמו פערים." */
+  /** Short name of the issue, listed in the "מה הכי חשוב לכם?" step. */
   topic: string;
 }
 
@@ -32,10 +29,11 @@ export interface ChoiceQuestion extends QuestionBase {
   options: ChoiceOption[];
 }
 
-/** An archetype "sits" at a point on a slider; the closer the answer, the more points (max 3). */
+/** A party "sits" at a point on a slider; the closer the answer, the more points (max 3). */
 export interface AxisAnchor {
-  archetype: ArchetypeId;
+  party: PartyId;
   at: number;
+  basis: PositionId[];
 }
 
 export interface AxisQuestion extends QuestionBase {
@@ -48,7 +46,8 @@ export type Question = ChoiceQuestion | AxisQuestion;
 
 export type Answer =
   | { kind: 'choice'; optionId: string }
-  | { kind: 'axis'; value: number }
+  /** `untouched`: "המשך" on a slider nobody moved. Scored as the middle, but no stance is read into it. */
+  | { kind: 'axis'; value: number; untouched?: true }
   | { kind: 'skip' };
 
 /** Keyed by question id. `undefined` = not visited yet. */

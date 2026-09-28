@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { bandIndex } from '../data/axes';
-import { PARTIES, partyForArchetype } from '../data/parties';
+import { PARTIES, partyById } from '../data/parties';
 import { QUESTIONS } from '../data/questions';
 import type { Answers } from '../data/types';
-import { axisReadings, identityParts, identitySentence, shareText } from './identity';
+import { cardStances, joinHebrew, matchSentence, sharedStances, shareText, stanceOf } from './identity';
 import { flavorLine } from './microcopy';
+
+const byId = (id: string) => QUESTIONS.find((q) => q.id === id)!;
+const pick = (optionId: string) => ({ kind: 'choice', optionId }) as const;
 
 describe('bands', () => {
   it.each([
@@ -21,64 +24,74 @@ describe('bands', () => {
   ])('value %i → band %i', (value, band) => {
     expect(bandIndex(value)).toBe(band);
   });
-
-  it('uses the physical poles: falafel and AC are on the right', () => {
-    const readings = axisReadings(QUESTIONS, { q1: { kind: 'axis', value: 90 }, q6: { kind: 'axis', value: 10 } });
-    expect(readings.map((r) => r.descriptor).sort()).toEqual(['ימין־פלאפל', 'שמאל־חלון'].sort());
-  });
 });
 
-describe('identity sentence', () => {
+describe('stances', () => {
+  it('reads the chosen answer, or the slider band', () => {
+    expect(stanceOf(byId('foreign'), pick('a'))).toBe('כתר לנשיא טראמפ');
+    expect(stanceOf(byId('service'), { kind: 'axis', value: 100 })).toBe('זכות בחירה רק למי ששירת');
+    expect(stanceOf(byId('service'), { kind: 'axis', value: 50 })).toBe('פטור ללומדי תורה');
+  });
+
+  it('reads nothing into skips or a slider nobody moved', () => {
+    expect(stanceOf(byId('foreign'), { kind: 'skip' })).toBeNull();
+    expect(stanceOf(byId('foreign'), undefined)).toBeNull();
+    expect(stanceOf(byId('service'), { kind: 'axis', value: 50, untouched: true })).toBeNull();
+  });
+
   const answers: Answers = {
-    q1: { kind: 'axis', value: 30 }, // מרכז־פיצה, 20 from center
-    q6: { kind: 'axis', value: 95 }, // ימין־מזגן, 45 from center
-    q9: { kind: 'axis', value: 60 }, // נוטה ליומן, 10 from center
-    q2: { kind: 'choice', optionId: 'c' }, // strength 3
-    q4: { kind: 'skip' },
+    pm: pick('d'), // גן עדן 3
+    cost: pick('a'), // גן עדן 3
+    health: pick('d'), // גן עדן 3, שרשר 2
+    housing: pick('d'), // גן עדן 1: too weak to count as agreement
+    constitution: pick('b'), // גן עדן 3
+    foreign: pick('a'), // שרשר only
   };
 
-  it('takes the two most decided axes, then the strongest stance', () => {
-    expect(identityParts(QUESTIONS, answers)).toEqual(['ימין־מזגן', 'מרכז־פיצה', 'קו קיצוני בנושא הודעות קוליות']);
-    expect(identitySentence(identityParts(QUESTIONS, answers))).toBe(
-      'ימין־מזגן. מרכז־פיצה. קו קיצוני בנושא הודעות קוליות.',
-    );
+  it('keeps only what the party itself holds, strongest first, in question order', () => {
+    expect(sharedStances(QUESTIONS, answers, 'gan-eden')).toEqual([
+      'ראש ממשלה שהוא גם שר האוצר',
+      'שמיטת חובות לאומית',
+      'תוכנית לאומית לריפוי טראומה',
+    ]);
+    // Sharsher: its own answer (3) before the one it shares with Gan Eden (2).
+    expect(sharedStances(QUESTIONS, answers, 'sharsher')).toEqual(['כתר לנשיא טראמפ', 'תוכנית לאומית לריפוי טראומה']);
   });
 
-  it('builds the default share text', () => {
-    const parts = identityParts(QUESTIONS, answers);
-    expect(shareText('הפיראטים', 93, parts, 'https://example.co.il/')).toBe(
-      'יצא לי הפיראטים, 93%. ימין־מזגן, מרכז־פיצה.\nhttps://example.co.il/',
-    );
+  it('puts the issues marked important first', () => {
+    expect(sharedStances(QUESTIONS, answers, 'gan-eden', ['constitution'])[0]).toBe('חוק יסוד: האדם כמקדש חי');
   });
 
-  it('falls back to stances when no slider was answered', () => {
-    const parts = identityParts(QUESTIONS, {
-      q2: { kind: 'choice', optionId: 'c' },
-      q12: { kind: 'choice', optionId: 'd' },
-      q5: { kind: 'choice', optionId: 'b' },
-    });
-    expect(parts).toHaveLength(3);
-    // The two strength-3 stances come first (order decided by the answers hash), then the weaker one.
-    expect([...parts.slice(0, 2)].sort()).toEqual(
-      ['קו פדרליסטי בעניין כיסאות בחניה', 'קו קיצוני בנושא הודעות קוליות'].sort(),
-    );
-    expect(parts[2]).toBe('קו מתון בסוגיית המעלית');
+  it('joins Hebrew lists with the conjunction on the last item', () => {
+    expect(joinHebrew([])).toBe('');
+    expect(joinHebrew(['א'])).toBe('א');
+    expect(joinHebrew(['א', 'ב'])).toBe('א וב');
+    expect(joinHebrew(['א', 'ב', 'ג'])).toBe('א, ב וג');
+    expect(joinHebrew(['א', '11 שרים'])).toBe('א ו־11 שרים');
   });
 
+  it('builds the match line, the card line and the share text', () => {
+    const stances = sharedStances(QUESTIONS, answers, 'gan-eden');
+    expect(matchSentence('גן עדן', stances)).toBe(
+      'כמו גן עדן, גם אתם בעד ראש ממשלה שהוא גם שר האוצר, שמיטת חובות לאומית ותוכנית לאומית לריפוי טראומה.',
+    );
+    expect(matchSentence('גן עדן', [])).toBeNull();
+    expect(cardStances(['שמיטת חובות לאומית'])).toBe('בעד שמיטת חובות לאומית.');
+    expect(cardStances([])).toBe('');
+    expect(shareText('גן עדן', 91, stances, 'https://example.co.il/')).toBe(
+      'יצא לי גן עדן, 91%. בעד ראש ממשלה שהוא גם שר האוצר ושמיטת חובות לאומית.\nhttps://example.co.il/',
+    );
+    expect(shareText('גן עדן', 91, [], '')).toBe('יצא לי גן עדן, 91%.');
+  });
 });
 
-describe('flavor line', () => {
-  it('shows the party punch line only when it is true for these answers', () => {
-    const pirates = partyForArchetype('digital_autonomy'); // needs the elevator answer a or d
-    expect(flavorLine(pirates, { q5: { kind: 'choice', optionId: 'd' } })).toBe('בנושא המעלית נמצאה ביניכם תמימות דעים.');
-    expect(flavorLine(pirates, { q5: { kind: 'choice', optionId: 'c' } })).toBeNull();
-    expect(flavorLine(pirates, {})).toBeNull();
+describe('party texts', () => {
+  it('shows each flavor line when its condition holds', () => {
+    for (const p of PARTIES) expect(flavorLine(p, {}), p.id).toBe(p.flavor.text);
   });
 
-  it('gives the no-opinion winner its line', () => {
-    expect(flavorLine(partyForArchetype('peace_and_quiet'), {})).toBe('המערכת זיהתה אצלך נטייה חזקה לשקט.');
-  });
-  it('maps every archetype to exactly one party', () => {
-    expect(new Set(PARTIES.map((p) => p.archetype)).size).toBe(PARTIES.length);
+  it('gives every party a unique id and a short name for sentences', () => {
+    expect(new Set(PARTIES.map((p) => p.id)).size).toBe(PARTIES.length);
+    expect(partyById('sharsher').shortName).toBe('שרשר');
   });
 });
